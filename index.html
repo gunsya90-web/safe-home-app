@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#D7263D">
+<meta name="description" content="SAFE-HOME · AFP 기반 공동주택 화재 대응 정보공유 및 의사결정 플랫폼 데모">
+<title>SAFE-HOME · 화재 대응 의사결정 플랫폼</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar" id="topbar">
+    <span class="icon">🔥</span>
+    <div class="labelwrap">
+      <div class="label">SAFE-HOME · 화재 대응 플랫폼</div>
+      <div class="loc" id="topbarLoc"></div>
+    </div>
+    <button class="reset-btn" id="resetDemoBtn" title="데모 데이터 초기화">⟲</button>
+  </div>
+
+  <div class="progress-wrap" id="progressWrap" style="display:none;">
+    <div class="progress-fill" id="progressFill" style="width:0%;"></div>
+  </div>
+
+  <nav class="role-tabs" id="roleTabs">
+    <button class="role-tab active" data-role="resident">🏠 입주민<span class="tab-badge" id="badge-resident"></span></button>
+    <button class="role-tab" data-role="situation">📞 119 상황실<span class="tab-badge" id="badge-situation"></span></button>
+    <button class="role-tab" data-role="firefighter">🚒 소방대원<span class="tab-badge" id="badge-firefighter"></span></button>
+  </nav>
+
+  <main id="view-root" class="view-root"></main>
+
+  <div class="sos-fab" id="sosFab" style="display:none;">
+    <a href="tel:119">📞 119 상황실과 바로 통화하기</a>
+  </div>
+
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/store.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/resident.js"></script>
+<script src="js/situation.js"></script>
+<script src="js/firefighter.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

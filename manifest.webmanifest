@@ -1,0 +1,15 @@
+{
+  "name": "SAFE-HOME · AFP 화재 대응 의사결정 플랫폼",
+  "short_name": "SAFE-HOME",
+  "description": "AFP 기반 공동주택 화재 대응 정보공유 및 의사결정 플랫폼 데모 (입주민 · 119 상황실 · 소방대원)",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1A1A1A",
+  "theme_color": "#D7263D",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
