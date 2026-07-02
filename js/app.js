@@ -33,7 +33,7 @@
       }
     });
 
-    SAFEHOME.store.subscribe(refreshBadges);
+    SAFEHOME.store.subscribe(function () { refreshBadges(); updateChrome(); });
     switchRole('resident');
     refreshBadges();
     registerServiceWorker();
@@ -53,8 +53,15 @@
   }
 
   function updateChrome() {
-    var loc = SAFEHOME.store.getState().location;
-    topbarLoc.textContent = (loc.apt || loc.dong || loc.ho) ? SAFEHOME.locText(loc) : '';
+    var state = SAFEHOME.store.getState();
+    if (currentRole === 'resident') {
+      var loc = state.location;
+      topbarLoc.textContent = (loc.apt || loc.dong || loc.ho) ? SAFEHOME.locText(loc) : '';
+    } else {
+      topbarLoc.textContent = state.incident.confirmed
+        ? SAFEHOME.locText({ apt: state.incident.apt, dong: state.incident.dong })
+        : '사건 위치 미확정';
+    }
     if (currentRole === 'resident') {
       sosFab.style.display = 'block';
       topbar.style.display = 'flex';
@@ -82,9 +89,10 @@
 
   function refreshBadges() {
     var units = SAFEHOME.store.getUnits();
+    var pending = SAFEHOME.store.getPendingReports().length;
     var reported = units.filter(function (u) { return u.status !== 'unresponded'; }).length;
     var danger = units.filter(function (u) { return u.status === 'danger'; }).length;
-    setBadge('badge-situation', reported);
+    setBadge('badge-situation', pending + reported);
     setBadge('badge-firefighter', danger);
   }
   function setBadge(id, n) {

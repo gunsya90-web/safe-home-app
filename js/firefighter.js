@@ -36,15 +36,29 @@
   function render() {
     if (!root) return;
     var state = SAFEHOME.store.getState();
+
+    if (!state.incident.confirmed) {
+      root.innerHTML =
+        '<div class="dash-header ff">' +
+          '<div class="dash-title">🚒 현장 소방대원 정보카드</div>' +
+          '<div class="dash-sub">대기 중</div>' +
+        '</div>' +
+        '<div class="panel">' +
+          '<div class="empty-note">🕒 119 상황실에서 아직 사건 위치를 확정하지 않았습니다.<br>위치가 확정되면 건물 특이사항과 세대 현황이 여기에 표시됩니다.</div>' +
+        '</div>';
+      return;
+    }
+
+    var building = SAFEHOME.BUILDINGS[state.incident.buildingId];
     var units = SAFEHOME.store.getUnits();
     var priority = priorityUnits();
 
     root.innerHTML =
       '<div class="dash-header ff">' +
         '<div class="dash-title">🚒 현장 소방대원 정보카드</div>' +
-        '<div class="dash-sub">' + esc(state.location.apt || SAFEHOME.BUILDING.apt) + ' ' + esc(state.location.dong || SAFEHOME.BUILDING.dong) + '동 · ' + (state.dispatch.dispatched ? '출동 지령 수신 (' + SAFEHOME.fmtTime(state.dispatch.dispatchedAt) + ')' : '대기 중') + '</div>' +
+        '<div class="dash-sub">' + esc(state.incident.apt) + ' ' + esc(state.incident.dong) + '동 · ' + (state.dispatch.dispatched ? '출동 지령 수신 (' + SAFEHOME.fmtTime(state.dispatch.dispatchedAt) + ')' : '대기 중') + '</div>' +
       '</div>' +
-      afpSearchHtml() +
+      afpSearchHtml(building) +
       '<div class="panel">' +
         '<h3 class="panel-title">🎯 구조 우선순위 <span class="badge">' + priority.length + '</span></h3>' +
         priorityListHtml(priority) +
@@ -68,9 +82,8 @@
     });
   }
 
-  function afpSearchHtml() {
-    var s = SAFEHOME.AFP_SEARCH;
-    var b = SAFEHOME.BUILDING;
+  function afpSearchHtml(b) {
+    var s = b.search;
     return '<div class="panel">' +
       '<h3 class="panel-title">🔎 AFP-Search · 인명검색 특화 정보</h3>' +
       '<div class="search-grid">' +
@@ -78,7 +91,7 @@
         searchCard('🏢', '옥상 접근 방법', s.roofAccessRoute) +
         searchCard('🪜', '숨은 계단', s.hiddenStairs) +
         searchCard('🚪', '중간 방화문', s.midFireDoors) +
-        searchCard('🏠', '복층·다락 세대', s.duplexUnits.join(', ') + '호 — ' + s.duplexNote) +
+        searchCard('🏠', '복층·다락 세대', (s.duplexUnits.length ? s.duplexUnits.join(', ') + '호 — ' : '') + s.duplexNote) +
         searchCard('🧭', '피난안전구역', s.refugeAreaNote) +
         searchCard('🅿️', '지하·기계실', s.basementNote) +
         searchCard('🧱', '복도 형태', b.hallwayType + ' · 총 ' + b.floors + '층 · 세대당 ' + b.unitsPerFloor + '호') +

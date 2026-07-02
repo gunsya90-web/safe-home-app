@@ -101,60 +101,118 @@
   };
 
   // ---------------------------------------------------------------------
-  // 3. 데모 건물 / AFP-Core / AFP-Search 목업 DB
-  //    실제 서비스에서는 K-apt 단지코드 API 및 소방청 AFP DB와 연동될 영역.
+  // 3. 등록 건물 디렉터리 (여러 단지/동) — AFP-Core / AFP-Search 목업 DB
+  //    실제 서비스에서는 K-apt 단지코드 API 및 소방청 AFP DB로 사전 등록되는 영역이며,
+  //    입주민이 임의로 만드는 것이 아니라 관리사무소/소방시설관리사가 미리 등록해 둔다.
+  //    119 상황실은 신고가 들어오면 이 디렉터리에서 해당 건물을 찾아 "사건 위치"로 확정한다.
   // ---------------------------------------------------------------------
-  var BUILDING = {
-    apt: '행복아파트',
-    dong: '101',
-    floors: 9,          // 1층 ~ 9층
-    unitsPerFloor: 4,   // 01호 ~ 04호
-    hallwayType: '계단식',
-    fireOriginHo: '502' // 데모 시나리오: 5층 2호에서 발화
+  SAFEHOME.BUILDINGS = {
+    'happy-101': {
+      id: 'happy-101', apt: '행복아파트', dong: '101',
+      floors: 9, unitsPerFloor: 4, hallwayType: '계단식',
+      core: {
+        downwardEvacuationHatch: true, inUnitShelter: false, lightPartition: false,
+        roofEvacuation: true, roofAutoDoor: true, refugeArea: false, airSafetyMat: true
+      },
+      search: {
+        hoistRoomStructure: '최상층(9층) 계단실 옆 권상기실 → 옥상문. 손전등 없이는 식별 어려운 철제 사다리 있음.',
+        roofAccessRoute: '9층 계단실 → 권상기실 통과 → 옥상문(차동개폐장치 설치, 자동 개방). 옥상 면적 넓어 헬기 인명구조 가능.',
+        hiddenStairs: '도면 미표기 계단 없음. 101동은 단일 계단실 구조.',
+        midFireDoors: '5층·8층 계단실 진입부에 방화문 2개소 — 상시 닫힘, 손잡이형.',
+        duplexUnits: ['801', '901'],
+        duplexNote: '801호, 901호는 복층(다락) 구조. 다락 창문으로 2차 접근로 확보 가능.',
+        refugeAreaNote: '피난안전구역 미설치 — 30층 이상 대상 규정으로 본 건물(9층)은 해당 없음.',
+        basementNote: '지하 1층 기계실·주차장 있음. 화재 시 차량 진입 통제 필요.'
+      }
+    },
+    'happy-102': {
+      id: 'happy-102', apt: '행복아파트', dong: '102',
+      floors: 12, unitsPerFloor: 2, hallwayType: '복도식',
+      core: {
+        downwardEvacuationHatch: false, inUnitShelter: true, lightPartition: true,
+        roofEvacuation: false, roofAutoDoor: false, refugeArea: false, airSafetyMat: false
+      },
+      search: {
+        hoistRoomStructure: '최상층(12층) 중앙 복도 끝 권상기실. 이중 잠금장치 있어 소방 마스터키 필요.',
+        roofAccessRoute: '옥상 대피 불가 등록 건물 — 옥상문이 상시 시건 상태로 관리되며 자동개폐장치 없음.',
+        hiddenStairs: '동 측면에 관리사무소 전용 비상계단 1개소 있음 (일반 입주민 도면 미표기).',
+        midFireDoors: '각 층 복도 중앙에 방화문 1개소 — 자동폐쇄장치 설치.',
+        duplexUnits: [],
+        duplexNote: '복층 세대 없음 (전 세대 단층 구조).',
+        refugeAreaNote: '피난안전구역 미설치.',
+        basementNote: '지하 2층 규모 주차장. 화재 시 차량 진입 통제 및 지하 배연 확인 필요.'
+      }
+    },
+    'mirae-205': {
+      id: 'mirae-205', apt: '미래아파트', dong: '205',
+      floors: 20, unitsPerFloor: 6, hallwayType: '복도식',
+      core: {
+        downwardEvacuationHatch: false, inUnitShelter: false, lightPartition: false,
+        roofEvacuation: true, roofAutoDoor: false, refugeArea: true, airSafetyMat: false
+      },
+      search: {
+        hoistRoomStructure: '최상층(20층) 권상기실 2개소(A/B 라인 분리). 옥상문 수동 개방(자동개폐장치 없음).',
+        roofAccessRoute: '20층 각 라인 계단실 → 권상기실 통과 → 옥상문(수동). 고층 강풍 주의.',
+        hiddenStairs: '없음. A/B 라인 계단실이 명확히 분리된 구조.',
+        midFireDoors: '10층·15층 피난안전구역 진입부에 방화문 각 1개소.',
+        duplexUnits: [],
+        duplexNote: '복층 세대 없음.',
+        refugeAreaNote: '10층·15층에 피난안전구역 설치 — 각 최대 80인 수용, 완강기·공기안전매트 비치.',
+        basementNote: '지하 3층 대형 주차장. 화재 시 차량 우회 진입로(후면 게이트) 확보 필요.'
+      }
+    }
   };
-  SAFEHOME.BUILDING = BUILDING;
+  SAFEHOME.DEFAULT_BUILDING_ID = 'happy-101'; // 데모 시나리오 기본 건물
+  SAFEHOME.DEFAULT_FIRE_ORIGIN_HO = '502';     // 데모 시나리오 기본 최초 신고 세대
 
-  SAFEHOME.AFP_CORE = {
-    downwardEvacuationHatch: true,
-    inUnitShelter: false,
-    lightPartition: false,
-    roofEvacuation: true,
-    roofAutoDoor: true,
-    refugeArea: false,
-    airSafetyMat: true
+  function normalizeAddr(s) {
+    return String(s == null ? '' : s).replace(/\s+/g, '').toLowerCase();
+  }
+  SAFEHOME.normalizeAddr = normalizeAddr;
+
+  SAFEHOME.addrEquals = function (apt1, dong1, apt2, dong2) {
+    return normalizeAddr(apt1) === normalizeAddr(apt2) && normalizeAddr(dong1) === normalizeAddr(dong2);
   };
 
-  SAFEHOME.AFP_SEARCH = {
-    hoistRoomStructure: '최상층(9층) 계단실 옆 권상기실 → 옥상문. 손전등 없이는 식별 어려운 철제 사다리 있음.',
-    roofAccessRoute: '9층 계단실 → 권상기실 통과 → 옥상문(차동개폐장치 설치, 자동 개방). 옥상 면적 넓어 헬기 인명구조 가능.',
-    hiddenStairs: '도면 미표기 계단 없음. 101동은 단일 계단실 구조.',
-    midFireDoors: '5층·8층 계단실 진입부에 방화문 2개소 — 상시 닫힘, 손잡이형.',
-    duplexUnits: ['801', '901'],
-    duplexNote: '801호, 901호는 복층(다락) 구조. 다락 창문으로 2차 접근로 확보 가능.',
-    refugeAreaNote: '피난안전구역 미설치 — 30층 이상 대상 규정으로 본 건물(9층)은 해당 없음.',
-    basementNote: '지하 1층 기계실·주차장 있음. 화재 시 차량 진입 통제 필요.'
+  // 입주민이 입력한 아파트명/동으로 등록된 건물을 찾는다. 실제 서비스라면 K-apt 단지코드 조회로 대체된다.
+  SAFEHOME.findBuildingByAddress = function (apt, dong) {
+    var na = normalizeAddr(apt), nd = normalizeAddr(dong);
+    if (!na && !nd) return null;
+    var ids = Object.keys(SAFEHOME.BUILDINGS);
+    for (var i = 0; i < ids.length; i++) {
+      var b = SAFEHOME.BUILDINGS[ids[i]];
+      if (normalizeAddr(b.apt) === na && normalizeAddr(b.dong) === nd) return b;
+    }
+    if (!nd) {
+      for (var j = 0; j < ids.length; j++) {
+        var b2 = SAFEHOME.BUILDINGS[ids[j]];
+        if (normalizeAddr(b2.apt) === na) return b2;
+      }
+    }
+    return null;
   };
 
-  // 세대 그리드 생성 (Live Occupancy Status 데모용)
+  // 세대 그리드 생성 (Live Occupancy Status 데모용) — 확정된 건물 기준으로 생성한다.
   function buildUnitId(floor, unitIdx) {
     return String(floor) + String(unitIdx).padStart(2, '0');
   }
   SAFEHOME.buildUnitId = buildUnitId;
 
-  function generateUnits() {
+  function generateUnits(building, fireOriginHo) {
     var units = {};
-    for (var f = BUILDING.floors; f >= 1; f--) {
-      for (var u = 1; u <= BUILDING.unitsPerFloor; u++) {
+    for (var f = building.floors; f >= 1; f--) {
+      for (var u = 1; u <= building.unitsPerFloor; u++) {
         var ho = buildUnitId(f, u);
         units[ho] = {
           ho: ho,
           floor: f,
           unitIndex: u,
-          isFireOrigin: ho === BUILDING.fireOriginHo,
-          status: ho === BUILDING.fireOriginHo ? 'danger' : 'unresponded',
+          isFireOrigin: ho === fireOriginHo,
+          status: ho === fireOriginHo ? 'danger' : 'unresponded',
           resultKey: null,
           answers: null,
-          urgency: ho === BUILDING.fireOriginHo ? 'critical' : null,
+          urgency: ho === fireOriginHo ? 'critical' : null,
+          notes: [],
           updatedAt: null,
           occupants: (Math.random() > 0.7) ? 2 : 1,
           hasVulnerable: Math.random() > 0.85 // 고령자/영유아 등 거동취약자 여부(데모용 랜덤)

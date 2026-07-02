@@ -48,10 +48,10 @@
         '<div class="start-emoji">🚨</div>' +
         '<div class="start-title">화재 신고가 접수되었습니다</div>' +
         '<div class="start-sub">지금부터 상황에 따라 필요한 질문에 답해주세요.<br>신고자님의 상황에 맞는 <strong>가장 안전한 대피 방법</strong>을 안내해드립니다.</div>' +
-        '<div class="mode-note"><strong>긴급모드</strong>: 상황별 질문에 답하면 현재 상황에 맞는 행동요령, 119 전달문, 가족 공유 문구를 바로 제공하고, 119 상황실·현장 소방대원 화면에도 실시간으로 공유됩니다.</div>' +
+        '<div class="mode-note"><strong>긴급모드</strong>: 상황별 질문에 답하면 현재 상황에 맞는 행동요령, 119 전달문, 가족 공유 문구를 바로 제공합니다. 이 신고는 119 상황실로 전달되며, <strong>정확한 사건 위치(동·호)는 상황실에서 확인 후 확정</strong>합니다.</div>' +
 
         '<div class="home-box">' +
-          '<div class="home-box-title">🏠 우리집 정보 <span style="font-size:11px;color:#6B6B6B;">이 정보로 119·소방대원 화면과 연결됩니다</span></div>' +
+          '<div class="home-box-title">🏠 우리집 정보 <span style="font-size:11px;color:#6B6B6B;">신고 시 알려주는 위치입니다</span></div>' +
           '<div class="home-inputs">' +
             '<input id="sh-apt" placeholder="아파트명" value="' + esc(L.apt) + '">' +
             '<input id="sh-dong" placeholder="동" value="' + esc(L.dong) + '">' +
@@ -61,11 +61,11 @@
         '</div>' +
 
         '<div class="kapt-card">' +
-          '<h3>🏢 K-apt 소방시설 현황 입력</h3>' +
-          '<p>K-apt 관리시설정보의 소방시설 항목을 우선 수동으로 입력합니다. 추후 단지코드(kaptCode) API 조회값으로 자동 채워지는 영역입니다.</p>' +
+          '<h3>🏢 K-apt 소방시설 현황</h3>' +
+          '<p>등록된 단지라면 아래 시설현황이 자동으로 조회됩니다. 등록되지 않았거나 값이 다르면 직접 수정해 저장할 수 있습니다.</p>' +
           '<div class="facility-grid">' + fields + '</div>' +
-          '<div class="kapt-actions"><button class="primary" id="sh-save-afp">시설현황 저장</button><button class="ghost" id="sh-sample-afp">이 건물 예시값 불러오기</button></div>' +
-          '<div class="afp-note">※ 결과 안내에서 미설치 시설은 자동 제외하고, 가능한 대체 행동으로 판단합니다.</div>' +
+          '<div class="kapt-actions"><button class="primary" id="sh-save-afp">시설현황 저장</button><button class="ghost" id="sh-lookup-afp">🔎 등록된 건물정보 조회</button></div>' +
+          '<div class="afp-note">※ 결과 안내에서 미설치·확인 필요 시설은 자동 제외하고, 가능한 대체 행동으로 판단합니다.</div>' +
         '</div>' +
 
         '<button class="start-btn" id="sh-start">긴급 안내 시작하기</button>' +
@@ -77,7 +77,14 @@
       var dong = document.getElementById('sh-dong').value.trim();
       var ho = document.getElementById('sh-ho').value.trim();
       SAFEHOME.store.setLocation({ apt: apt, dong: dong, ho: ho });
-      SAFEHOME.toast('우리집 정보가 저장되었습니다.');
+      var building = SAFEHOME.findBuildingByAddress(apt, dong);
+      if (building) {
+        SAFEHOME.store.setAfp(building.core);
+        renderStart();
+        SAFEHOME.toast('우리집 정보가 저장되었습니다. 등록된 건물정보를 불러왔습니다.');
+      } else {
+        SAFEHOME.toast('우리집 정보가 저장되었습니다. (등록된 건물정보 없음 — 직접 입력해주세요)');
+      }
       SAFEHOME.app && SAFEHOME.app.refreshBadges && SAFEHOME.app.refreshBadges();
     };
     document.getElementById('sh-save-afp').onclick = function () {
@@ -89,10 +96,15 @@
       SAFEHOME.store.setAfp(patch);
       SAFEHOME.toast('K-apt 소방시설 현황이 저장되었습니다.');
     };
-    document.getElementById('sh-sample-afp').onclick = function () {
-      SAFEHOME.store.setAfp(SAFEHOME.AFP_CORE);
-      renderStart();
-      SAFEHOME.toast('이 건물의 AFP 예시값을 불러왔습니다.');
+    document.getElementById('sh-lookup-afp').onclick = function () {
+      var building = SAFEHOME.findBuildingByAddress(L.apt, L.dong);
+      if (building) {
+        SAFEHOME.store.setAfp(building.core);
+        renderStart();
+        SAFEHOME.toast(building.apt + ' ' + building.dong + '동 등록 정보를 불러왔습니다.');
+      } else {
+        SAFEHOME.toast('등록된 건물 정보가 없습니다. 아파트명·동을 확인하거나 직접 입력해주세요.');
+      }
     };
     document.getElementById('sh-start').onclick = function () { goTo(1); };
   }
@@ -150,7 +162,8 @@
     var res = SAFEHOME.decide(answers, A);
     var L = loc();
     if (L.ho) {
-      SAFEHOME.store.recordResidentResult(L.ho, {
+      SAFEHOME.store.submitReport({
+        apt: L.apt, dong: L.dong, ho: L.ho,
         answers: Object.assign({}, answers), resultKey: res.key, urgency: res.urgency, notes: res.notes
       });
     }
@@ -193,12 +206,18 @@
       }).join('') +
       '</div><div class="afp-note">※ 미설치/확인 필요 시설은 대피 판단에서 자동 제외됩니다.</div></div>';
 
-    var unit = L.ho ? SAFEHOME.store.getUnit(L.ho) : null;
+    var report = L.ho ? SAFEHOME.store.getReportByAddress(L.apt, L.dong, L.ho) : null;
+    var matchHtml = '';
     var doneHtml = '';
-    if (unit && unit.status !== 'safe') {
-      doneHtml = '<button class="utility-btn" style="width:100%;margin-bottom:14px;background:#2E7D32;" id="sh-mark-safe">🏁 대피를 완료했습니다 (상황실에 안전 알림)</button>';
-    } else if (unit && unit.status === 'safe') {
-      doneHtml = '<div class="action-card safe"><h3>✅ 대피 완료로 표시되었습니다</h3><ul><li>119 상황실·소방대원 화면에 안전 상태로 반영되었습니다.</li></ul></div>';
+    if (report) {
+      matchHtml = report.matched
+        ? '<div class="tag-ok" style="display:block;text-align:center;margin-bottom:14px;">✅ 119 상황실에서 위치를 확인했습니다</div>'
+        : '<div class="tag-warn" style="display:block;text-align:center;margin-bottom:14px;">🕒 119 상황실에서 신고 위치를 확인하는 중입니다</div>';
+      if (report.status !== 'safe') {
+        doneHtml = '<button class="utility-btn" style="width:100%;margin-bottom:14px;background:#2E7D32;" id="sh-mark-safe">🏁 대피를 완료했습니다 (상황실에 안전 알림)</button>';
+      } else {
+        doneHtml = '<div class="action-card safe"><h3>✅ 대피 완료로 표시되었습니다</h3><ul><li>119 상황실·소방대원 화면에 안전 상태로 반영되었습니다.</li></ul></div>';
+      }
     }
 
     root.innerHTML =
@@ -209,7 +228,7 @@
         locHtml +
       '</div>' +
       '<div class="utility-row"><button class="utility-btn" id="sh-speak">🔊 음성 안내</button><button class="utility-btn secondary" id="sh-copy119b">📋 119 문구</button></div>' +
-      doneHtml + summaryHtml + cardsHtml + howtoHtml + msgHtml + afpHtml +
+      matchHtml + doneHtml + summaryHtml + cardsHtml + howtoHtml + msgHtml + afpHtml +
       '<button class="restart-btn" id="sh-restart">처음부터 다시 진행하기</button>';
 
     document.getElementById('sh-copy119').onclick = function () { copyMsg(msg); };
@@ -219,7 +238,7 @@
     document.getElementById('sh-restart').onclick = function () { mount(root); };
     var markSafeBtn = document.getElementById('sh-mark-safe');
     if (markSafeBtn) markSafeBtn.onclick = function () {
-      SAFEHOME.store.markUnitSafe(L.ho);
+      SAFEHOME.store.markSafeByAddress(L.apt, L.dong, L.ho);
       renderResult();
       SAFEHOME.toast('대피 완료로 알려졌습니다. 수고하셨습니다.');
     };
