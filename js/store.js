@@ -52,6 +52,7 @@
       afp: {},
       location: { apt: '', dong: '', ho: '' },
       dispatch: { dispatched: false, dispatchedAt: null },
+      dispatchNote: '',
       updatedAt: Date.now()
     };
   }
@@ -227,6 +228,11 @@
 
     dispatch: function () {
       state.dispatch = { dispatched: true, dispatchedAt: Date.now() };
+      commit();
+    },
+
+    setDispatchNote: function (text) {
+      state.dispatchNote = text || '';
       commit();
     },
 

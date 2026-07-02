@@ -8,6 +8,7 @@
   var root = null;
   var selectedHo = null;
   var unsubscribe = null;
+  var floorplanOpenHo = null; // 세대 개략도를 펼쳐본 세대(호) — 한 번에 하나만 연다.
 
   var PRIORITY_ORDER = { danger: 0, unresponded: 1, moving: 2, waiting: 3, safe: 4 };
 
@@ -16,6 +17,7 @@
     if (unsubscribe) unsubscribe();
     unsubscribe = SAFEHOME.store.subscribe(render);
     selectedHo = null;
+    floorplanOpenHo = null;
     render();
   }
   function unmount() {
@@ -58,10 +60,11 @@
         '<div class="dash-title">🚒 현장 소방대원 정보카드</div>' +
         '<div class="dash-sub">' + esc(state.incident.apt) + ' ' + esc(state.incident.dong) + '동 · ' + (state.dispatch.dispatched ? '출동 지령 수신 (' + SAFEHOME.fmtTime(state.dispatch.dispatchedAt) + ')' : '대기 중') + '</div>' +
       '</div>' +
+      (state.dispatchNote ? '<div class="panel" style="border-color:#FFD180;background:#FFFBF2;"><h3 class="panel-title">📝 119 상황실 메모</h3><div style="font-size:13.5px;line-height:1.6;white-space:pre-line;">' + esc(state.dispatchNote) + '</div></div>' : '') +
       afpSearchHtml(building) +
       '<div class="panel">' +
         '<h3 class="panel-title">🎯 구조 우선순위 <span class="badge">' + priority.length + '</span></h3>' +
-        priorityListHtml(priority) +
+        priorityListHtml(priority, building) +
       '</div>' +
       '<div class="panel">' +
         '<h3 class="panel-title">🗺️ 실시간 세대 현황</h3>' +
@@ -78,6 +81,13 @@
         var action = el.getAttribute('data-action');
         SAFEHOME.store.firefighterSetStatus(ho, action);
         SAFEHOME.toast(ho + '호 상태를 "' + SAFEHOME.STATUS_META[action].label + '"(으)로 갱신했습니다.');
+      };
+    });
+    root.querySelectorAll('[data-floorplan-ho]').forEach(function (el) {
+      el.onclick = function () {
+        var ho = el.getAttribute('data-floorplan-ho');
+        floorplanOpenHo = (floorplanOpenHo === ho) ? null : ho;
+        render();
       };
     });
   }
@@ -102,27 +112,46 @@
     return '<div class="search-card"><div class="search-card-title">' + icon + ' ' + esc(title) + '</div><div class="search-card-body">' + esc(body) + '</div></div>';
   }
 
-  function priorityListHtml(list) {
+  function groupByFloor(list) {
+    var map = {};
+    list.forEach(function (u) { (map[u.floor] = map[u.floor] || []).push(u); });
+    return Object.keys(map).map(Number).sort(function (a, b) { return b - a; })
+      .map(function (f) { return { floor: f, units: map[f].sort(function (a, b) { return a.unitIndex - b.unitIndex; }) }; });
+  }
+
+  function priorityListHtml(list, building) {
     if (!list.length) {
       return '<div class="empty-note">현재 구조 대기 중인 세대가 없습니다. 모든 세대가 대피를 완료했습니다.</div>';
     }
-    return '<div class="ff-list">' + list.map(function (u) {
-      var meta = SAFEHOME.STATUS_META[u.status];
-      var res = SAFEHOME.RESULTS[u.resultKey];
-      return '<div class="ff-card status-border-' + u.status + '">' +
-        '<div class="ff-card-head">' +
-          '<span class="ff-ho">' + (u.isFireOrigin ? '🔥 ' : '') + u.ho + '호</span>' +
-          '<span class="ff-status" style="color:' + meta.color + '">' + meta.label + '</span>' +
-        '</div>' +
-        (u.hasVulnerable ? '<div class="tag-warn">⚠️ 거동 불편자 있음 · ' + u.occupants + '인 세대</div>' : '<div class="tag-info">' + u.occupants + '인 세대</div>') +
-        (res ? '<div class="ff-plan">📋 입주민 안내: ' + res.icon + ' ' + esc(res.title) + '</div>' : '<div class="ff-plan">📋 아직 대피 판정 없음 · 직접 확인 필요</div>') +
-        '<div class="ff-actions">' +
-          '<button data-action="safe" data-ho="' + u.ho + '">✅ 구조·대피 완료</button>' +
-          '<button data-action="moving" data-ho="' + u.ho + '">🚪 이동 유도 중</button>' +
-          '<button data-action="danger" data-ho="' + u.ho + '" class="danger">🔴 위험 재확인</button>' +
-        '</div>' +
+    var floorGroups = groupByFloor(list);
+    return '<div class="ff-floors">' + floorGroups.map(function (g) {
+      return '<div class="ff-floor-group">' +
+        '<div class="ff-floor-label">' + g.floor + 'F</div>' +
+        '<div class="ff-floor-row">' + g.units.map(function (u) { return ffCardHtml(u, building); }).join('') + '</div>' +
       '</div>';
     }).join('') + '</div>';
+  }
+
+  function ffCardHtml(u, building) {
+    var meta = SAFEHOME.STATUS_META[u.status];
+    var res = SAFEHOME.RESULTS[u.resultKey];
+    var isDuplex = building.search.duplexUnits.indexOf(u.ho) !== -1;
+    var open = floorplanOpenHo === u.ho;
+    return '<div class="ff-card status-border-' + u.status + '">' +
+      '<div class="ff-card-head">' +
+        '<span class="ff-ho">' + (u.isFireOrigin ? '🔥 ' : '') + u.ho + '호' + (isDuplex ? ' 🪜' : '') + '</span>' +
+        '<span class="ff-status" style="color:' + meta.color + '">' + meta.label + '</span>' +
+      '</div>' +
+      (u.hasVulnerable ? '<div class="tag-warn">⚠️ 거동 불편자 있음 · ' + u.occupants + '인 세대</div>' : '<div class="tag-info">' + u.occupants + '인 세대</div>') +
+      (res ? '<div class="ff-plan">📋 입주민 안내: ' + res.icon + ' ' + esc(res.title) + '</div>' : '<div class="ff-plan">📋 아직 대피 판정 없음 · 직접 확인 필요</div>') +
+      '<div class="ff-actions">' +
+        '<button data-action="safe" data-ho="' + u.ho + '">✅ 구조·대피 완료</button>' +
+        '<button data-action="moving" data-ho="' + u.ho + '">🚪 이동 유도 중</button>' +
+        '<button data-action="danger" data-ho="' + u.ho + '" class="danger">🔴 위험 재확인</button>' +
+      '</div>' +
+      '<button class="ff-floorplan-toggle" data-floorplan-ho="' + u.ho + '">' + (open ? '▲ 세대 도면 닫기' : '🗺️ 세대 도면 보기') + '</button>' +
+      (open ? '<div class="ff-floorplan-box">' + SAFEHOME.renderUnitFloorplan(building.core, isDuplex) + '</div>' : '') +
+    '</div>';
   }
 
   SAFEHOME.Firefighter = { mount: mount, unmount: unmount };
