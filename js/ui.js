@@ -49,9 +49,11 @@
     return '<div class="occ-grid">' + rows + '</div>';
   };
 
-  // AFP-Core 설치 현황을 표(그리드)로 렌더링 — 입주민/119 상황실 화면에서 공용으로 쓴다.
-  SAFEHOME.renderAfpGrid = function (afp) {
-    return '<div class="afp-grid">' + SAFEHOME.AFP_CORE_FIELDS.map(function (f) {
+  // 시설 설치 현황을 표(그리드)로 렌더링 — 입주민/119 상황실/소방대원 화면에서 공용으로 쓴다.
+  // fields를 생략하면 피난시설(AFP_CORE_FIELDS) 기준이고, AFP_SUPPRESSION_FIELDS를 넘기면 소화시설 그리드가 된다.
+  SAFEHOME.renderAfpGrid = function (afp, fields) {
+    fields = fields || SAFEHOME.AFP_CORE_FIELDS;
+    return '<div class="afp-grid">' + fields.map(function (f) {
       return '<div class="afp-item ' + SAFEHOME.ynClass(afp[f.key]) + '">' + f.icon + ' ' + SAFEHOME.escapeHtml(f.label) + ': ' + SAFEHOME.escapeHtml(SAFEHOME.ynText(afp[f.key], f.yes, f.no)) + '</div>';
     }).join('') + '</div>';
   };

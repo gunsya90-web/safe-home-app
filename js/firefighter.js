@@ -61,6 +61,8 @@
         '<div class="dash-sub">' + esc(state.incident.apt) + ' ' + esc(state.incident.dong) + '동 · ' + (state.dispatch.dispatched ? '출동 지령 수신 (' + SAFEHOME.fmtTime(state.dispatch.dispatchedAt) + ')' : '대기 중') + '</div>' +
       '</div>' +
       (state.dispatchNote ? '<div class="panel" style="border-color:#FFD180;background:#FFFBF2;"><h3 class="panel-title">📝 119 상황실 메모</h3><div style="font-size:13.5px;line-height:1.6;white-space:pre-line;">' + esc(state.dispatchNote) + '</div></div>' : '') +
+      casualtyPanelHtml(state.casualties) +
+      suppressionPanelHtml(building) +
       afpSearchHtml(building) +
       '<div class="panel">' +
         '<h3 class="panel-title">🎯 구조 우선순위 <span class="badge">' + priority.length + '</span></h3>' +
@@ -83,6 +85,13 @@
         SAFEHOME.toast(ho + '호 상태를 "' + SAFEHOME.STATUS_META[action].label + '"(으)로 갱신했습니다.');
       };
     });
+    root.querySelectorAll('[data-casualty-key]').forEach(function (el) {
+      el.onclick = function () {
+        var key = el.getAttribute('data-casualty-key');
+        var delta = parseInt(el.getAttribute('data-casualty-adjust'), 10);
+        SAFEHOME.store.adjustCasualty(key, delta);
+      };
+    });
     root.querySelectorAll('[data-floorplan-ho]').forEach(function (el) {
       el.onclick = function () {
         var ho = el.getAttribute('data-floorplan-ho');
@@ -90,6 +99,39 @@
         render();
       };
     });
+  }
+
+  var CASUALTY_FIELDS = [
+    { key: 'dead', label: '사망', icon: '⚫' },
+    { key: 'severe', label: '중상', icon: '🔴' },
+    { key: 'minor', label: '경상', icon: '🟡' },
+    { key: 'guided', label: '피난유도 인원', icon: '🚶' },
+    { key: 'selfEvacuated', label: '자력대피 인원', icon: '🏃' }
+  ];
+
+  function casualtyPanelHtml(c) {
+    c = c || {};
+    return '<div class="panel">' +
+      '<h3 class="panel-title">🚑 환자 · 대피 현황</h3>' +
+      '<div class="casualty-grid">' + CASUALTY_FIELDS.map(function (it) {
+        return '<div class="casualty-item">' +
+          '<div class="casualty-label">' + it.icon + ' ' + it.label + '</div>' +
+          '<div class="casualty-controls">' +
+            '<button data-casualty-key="' + it.key + '" data-casualty-adjust="-1">−</button>' +
+            '<span class="casualty-count">' + (c[it.key] || 0) + '</span>' +
+            '<button data-casualty-key="' + it.key + '" data-casualty-adjust="1">+</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') + '</div>' +
+      '<div class="afp-note">※ 119 상황실 화면에도 그대로 표시됩니다.</div>' +
+    '</div>';
+  }
+
+  function suppressionPanelHtml(b) {
+    return '<div class="panel">' +
+      '<h3 class="panel-title">🚰 소화시설 현황</h3>' +
+      SAFEHOME.renderAfpGrid(b.suppression, SAFEHOME.AFP_SUPPRESSION_FIELDS) +
+    '</div>';
   }
 
   function afpSearchHtml(b) {

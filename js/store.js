@@ -53,6 +53,7 @@
       location: { apt: '', dong: '', ho: '' },
       dispatch: { dispatched: false, dispatchedAt: null },
       dispatchNote: '',
+      casualties: { dead: 0, severe: 0, minor: 0, guided: 0, selfEvacuated: 0 },
       updatedAt: Date.now()
     };
   }
@@ -201,13 +202,22 @@
     setIncidentBuilding: function (buildingId, officialHo) {
       var building = SAFEHOME.BUILDINGS[buildingId];
       if (!building) return;
+      var isNewBuilding = state.incident.buildingId !== buildingId;
       state.incident = {
         confirmed: true, buildingId: buildingId, apt: building.apt, dong: building.dong,
         officialHo: officialHo || null, confirmedAt: Date.now()
       };
       state.units = SAFEHOME.generateUnits(building, officialHo || null);
       state.afp = Object.assign({}, building.core);
+      if (isNewBuilding) state.casualties = { dead: 0, severe: 0, minor: 0, guided: 0, selfEvacuated: 0 };
       Object.keys(state.reports).forEach(syncReportToUnit);
+      commit();
+    },
+
+    adjustCasualty: function (key, delta) {
+      state.casualties = state.casualties || { dead: 0, severe: 0, minor: 0, guided: 0, selfEvacuated: 0 };
+      var cur = state.casualties[key] || 0;
+      state.casualties[key] = Math.max(0, cur + delta);
       commit();
     },
 

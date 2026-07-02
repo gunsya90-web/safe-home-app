@@ -76,6 +76,7 @@
       (pending.length && !confirmOpen ? pendingPanelHtml(pending, state.incident.confirmed) : '') +
       (state.incident.confirmed ? (
         statBarHtml(counts) +
+        casualtySummaryHtml(state.casualties) +
         '<div class="dash-grid-2">' +
           facilityPanelHtml(SAFEHOME.BUILDINGS[state.incident.buildingId], state.afp) +
           specialStructureHtml(SAFEHOME.BUILDINGS[state.incident.buildingId]) +
@@ -157,12 +158,15 @@
     '</div>';
   }
 
-  // 건물 소방시설현황(AFP-Core) — 신고가 들어왔을 때 상황실이 바로 참고해 안내할 수 있도록 상시 노출한다.
+  // 건물 소방시설현황(피난시설 + 소화시설) — 신고가 들어왔을 때 상황실이 바로 참고해 안내할 수 있도록 상시 노출한다.
   function facilityPanelHtml(building, afp) {
     return '<div class="panel">' +
-      '<h3 class="panel-title">🧯 소방시설현황 (AFP-Core)</h3>' +
+      '<h3 class="panel-title">🧯 소방시설현황</h3>' +
+      '<div style="font-size:11.5px;font-weight:800;color:var(--gray);margin-bottom:6px;">피난시설 (AFP-Core)</div>' +
       SAFEHOME.renderAfpGrid(afp) +
-      '<div class="afp-note">※ 신고자에게 안내할 대체 대피시설(대피공간·경량칸막이·하향식피난구 등)을 바로 확인할 수 있습니다.</div>' +
+      '<div style="font-size:11.5px;font-weight:800;color:var(--gray);margin:12px 0 6px;">소화시설</div>' +
+      SAFEHOME.renderAfpGrid(building.suppression, SAFEHOME.AFP_SUPPRESSION_FIELDS) +
+      '<div class="afp-note">※ 신고자에게 안내할 대체 대피시설과, 현장 초기 진압에 쓸 수 있는 소화설비를 함께 확인할 수 있습니다.</div>' +
     '</div>';
   }
 
@@ -187,6 +191,25 @@
       '<textarea id="sh-note-input" rows="2" placeholder="예: 903호 거동 불편 노약자 1인, 우선 구조 요망" ' +
         'style="width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;">' + esc(value) + '</textarea>' +
       '<button class="utility-btn" style="width:100%;margin-top:8px;" id="sh-note-save">전달하기</button>' +
+    '</div>';
+  }
+
+  var CASUALTY_LABELS = [
+    { key: 'dead', label: '사망', icon: '⚫' },
+    { key: 'severe', label: '중상', icon: '🔴' },
+    { key: 'minor', label: '경상', icon: '🟡' },
+    { key: 'guided', label: '피난유도', icon: '🚶' },
+    { key: 'selfEvacuated', label: '자력대피', icon: '🏃' }
+  ];
+
+  // 현장 소방대원이 입력하는 값을 읽기 전용으로 보여준다 (입력은 소방대원 화면에서만 한다).
+  function casualtySummaryHtml(c) {
+    c = c || {};
+    return '<div class="panel">' +
+      '<h3 class="panel-title">🚑 환자 · 대피 현황 <span style="font-size:11px;color:var(--gray);font-weight:700;">(소방대원 입력)</span></h3>' +
+      '<div class="stat-bar">' + CASUALTY_LABELS.map(function (it) {
+        return stat(it.icon, c[it.key] || 0, it.label);
+      }).join('') + '</div>' +
     '</div>';
   }
 

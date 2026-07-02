@@ -88,6 +88,16 @@
     { key: 'airSafetyMat', label: '공기안전매트', icon: '🛟', yes: '비치', no: '미비치' }
   ];
 
+  // ---------------------------------------------------------------------
+  // 2-1. 소화시설 항목 정의 (초기 진압용 — 119 상황실 · 소방대원이 참고하는 정보)
+  //      피난시설(AFP_CORE_FIELDS)과 달리 입주민의 대피 판정(rules.js decide())에는 관여하지 않는다.
+  // ---------------------------------------------------------------------
+  SAFEHOME.AFP_SUPPRESSION_FIELDS = [
+    { key: 'indoorHydrant', label: '옥내소화전', icon: '🧯', yes: '설치', no: '미설치' },
+    { key: 'sprinkler', label: '스프링클러', icon: '💦', yes: '설치', no: '미설치' },
+    { key: 'waterSprayConnection', label: '연결살수설비', icon: '🚿', yes: '설치', no: '미설치' }
+  ];
+
   function ynText(v, yes, no) {
     if (v === true) return yes;
     if (v === false) return no;
@@ -114,6 +124,7 @@
         downwardEvacuationHatch: true, inUnitShelter: false, lightPartition: false,
         roofEvacuation: true, roofAutoDoor: true, refugeArea: false, airSafetyMat: true
       },
+      suppression: { indoorHydrant: true, sprinkler: false, waterSprayConnection: false },
       search: {
         hoistRoomStructure: '최상층(9층) 계단실 옆 권상기실 → 옥상문. 손전등 없이는 식별 어려운 철제 사다리 있음.',
         roofAccessRoute: '9층 계단실 → 권상기실 통과 → 옥상문(차동개폐장치 설치, 자동 개방). 옥상 면적 넓어 헬기 인명구조 가능.',
@@ -132,6 +143,7 @@
         downwardEvacuationHatch: false, inUnitShelter: true, lightPartition: true,
         roofEvacuation: false, roofAutoDoor: false, refugeArea: false, airSafetyMat: false
       },
+      suppression: { indoorHydrant: true, sprinkler: true, waterSprayConnection: false },
       search: {
         hoistRoomStructure: '최상층(12층) 중앙 복도 끝 권상기실. 이중 잠금장치 있어 소방 마스터키 필요.',
         roofAccessRoute: '옥상 대피 불가 등록 건물 — 옥상문이 상시 시건 상태로 관리되며 자동개폐장치 없음.',
@@ -150,6 +162,7 @@
         downwardEvacuationHatch: false, inUnitShelter: false, lightPartition: false,
         roofEvacuation: true, roofAutoDoor: false, refugeArea: true, airSafetyMat: false
       },
+      suppression: { indoorHydrant: true, sprinkler: true, waterSprayConnection: true },
       search: {
         hoistRoomStructure: '최상층(20층) 권상기실 2개소(A/B 라인 분리). 옥상문 수동 개방(자동개폐장치 없음).',
         roofAccessRoute: '20층 각 라인 계단실 → 권상기실 통과 → 옥상문(수동). 고층 강풍 주의.',

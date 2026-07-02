@@ -284,3 +284,12 @@ button, input, select{ font-family: inherit; }
 
 .correction-card{background:#FFF8E1; border:2px solid #FFD180; border-radius:14px; padding:14px; margin-bottom:14px; font-size:13.5px; line-height:1.6;}
 .correction-card strong{color:var(--amber);}
+
+/* Casualty / evacuation counters */
+.casualty-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px; }
+.casualty-item{ background:#FAFAF8; border:1.5px solid var(--line); border-radius:12px; padding:10px; text-align:center; }
+.casualty-label{ font-size:11.5px; font-weight:800; color:var(--gray); margin-bottom:8px; }
+.casualty-controls{ display:flex; align-items:center; justify-content:center; gap:10px; }
+.casualty-controls button{ width:30px; height:30px; border-radius:8px; border:none; background:var(--ink); color:#fff; font-size:16px; font-weight:900; cursor:pointer; line-height:1; }
+.casualty-controls button:active{ background:var(--red); }
+.casualty-count{ min-width:24px; font-size:17px; font-weight:900; }
