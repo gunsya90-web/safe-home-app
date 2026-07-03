@@ -187,12 +187,27 @@ button, input, select{ font-family: inherit; }
 .utility-btn{border:none; border-radius:12px; padding:14px 10px; font-size:13.5px; font-weight:900; cursor:pointer; background:#1A1A1A; color:#fff;}
 .utility-btn.secondary{background:#fff; color:var(--ink); border:1.5px solid var(--line);}
 
+.incident-tabs{ display:flex; gap:8px; flex-wrap:wrap; padding:0 20px 16px; }
+.incident-tab{ border:1.5px solid var(--line); background:#fff; color:var(--ink); border-radius:999px; padding:8px 14px; font-size:12.5px; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; }
+.incident-tab.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+.incident-tab.add{ background:#F1F0EC; border-style:dashed; color:var(--gray); }
+.incident-tab .badge{ background:var(--red); color:#fff; }
+
 /* ================= Dashboards (119 / firefighter) ================= */
 .dash-header{ padding:20px 20px 14px; }
 .dash-header.ff{ background:linear-gradient(135deg,#1A1A1A,#33261f); color:#fff; }
 .dash-title{ font-size:20px; font-weight:900; }
 .dash-sub{ font-size:12.5px; color:var(--gray); margin-top:4px; }
 .dash-header.ff .dash-sub{ color:#D8D0C8; }
+.dash-header.alert-flash{ animation: alertFlash 0.6s ease-in-out 3; }
+.dash-header.alert-flash .dash-title, .dash-header.alert-flash .dash-sub{ color:#fff; }
+@keyframes alertFlash{ 0%,100%{ background:var(--red); } 50%{ background:#FFC400; } }
+
+.log-list{ display:flex; flex-direction:column; gap:2px; max-height:260px; overflow-y:auto; }
+.log-row{ display:grid; grid-template-columns:auto auto 1fr; gap:8px; padding:6px 0; border-bottom:1px dashed var(--line); font-size:11.5px; }
+.log-time{ color:#9AA0A6; font-variant-numeric:tabular-nums; }
+.log-actor{ font-weight:800; color:var(--blue); }
+.log-action{ color:var(--ink); }
 
 .stat-bar{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; padding:0 20px 16px; }
 .stat-item{ background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:10px 4px; text-align:center; }
@@ -276,9 +291,10 @@ button, input, select{ font-family: inherit; }
 .ff-ho{ font-size:15px; font-weight:900; }
 .ff-status{ font-size:12px; font-weight:800; }
 .ff-plan{ font-size:12px; color:var(--ink); margin:8px 0; line-height:1.5; }
-.ff-actions{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:8px; }
-.ff-actions button{ border:none; border-radius:8px; padding:9px 4px; font-size:11px; font-weight:800; cursor:pointer; background:var(--ink); color:#fff; }
-.ff-actions button.danger{ background:#FFEBEE; color:var(--red); }
+/* 방화장갑 낀 손으로도 오조작 없이 누를 수 있도록 44px 이상의 터치 타겟을 확보한다 (UX 검토 반영) */
+.ff-actions{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.ff-actions button{ border:none; border-radius:10px; padding:12px 6px; min-height:44px; font-size:13px; font-weight:800; cursor:pointer; background:var(--ink); color:#fff; }
+.ff-actions button.danger{ background:#FFEBEE; color:var(--red); grid-column:1 / -1; }
 .ff-floorplan-toggle{ width:100%; margin-top:8px; border:1.5px solid var(--line); background:#fff; border-radius:8px; padding:8px; font-size:11.5px; font-weight:800; color:var(--ink); cursor:pointer; }
 .ff-floorplan-box{ margin-top:8px; padding:10px; background:#fff; border:1.5px solid var(--line); border-radius:10px; }
 
@@ -293,3 +309,42 @@ button, input, select{ font-family: inherit; }
 .casualty-controls button{ width:30px; height:30px; border-radius:8px; border:none; background:var(--ink); color:#fff; font-size:16px; font-weight:900; cursor:pointer; line-height:1; }
 .casualty-controls button:active{ background:var(--red); }
 .casualty-count{ min-width:24px; font-size:17px; font-weight:900; }
+
+/* ================= 최소 폰트 크기 상향 (상황실/소방대원 대시보드, UX 검토 반영) ================= */
+#app.wide .stat-label, #app.wide .queue-time, #app.wide .occ-floor, #app.wide .occ-cell,
+#app.wide .badge, #app.wide .topbar .loc { font-size:12px; }
+#app.wide .facility-field label, #app.wide .log-row, #app.wide .tag-warn, #app.wide .tag-info,
+#app.wide .queue-result, #app.wide .legend-item, #app.wide .ff-floorplan-toggle,
+#app.wide .casualty-label, #app.wide .step-tag, #app.wide .loc-pill, #app.wide .afp-item,
+#app.wide .dash-sub, #app.wide .queue-item, #app.wide .check-row, #app.wide .tag-ok,
+#app.wide .search-card-title, #app.wide .search-card-body, #app.wide .ff-floor-label,
+#app.wide .afp-note { font-size:13px; }
+
+/* ================= 접기/펼치기 패널 (아코디언, UX 검토 반영) ================= */
+.panel[open] > summary.panel-title{ margin-bottom:12px; }
+summary.panel-title{ cursor:pointer; list-style:none; }
+summary.panel-title::-webkit-details-marker{ display:none; }
+summary.panel-title::after{ content:'▾'; float:right; color:var(--gray); font-size:12px; }
+.panel:not([open]) summary.panel-title::after{ content:'▸'; }
+.panel-collapsible-body{ animation: fadeIn .15s ease; }
+
+/* ================= 다크모드 (야간/정전 상황 고려, UX 검토 반영) ================= */
+.theme-toggle-btn{ background:rgba(255,255,255,0.18); border:none; color:#fff; width:30px; height:30px; border-radius:8px; font-size:14px; cursor:pointer; flex-shrink:0; margin-left:4px; }
+.theme-toggle-btn:active{ background:rgba(255,255,255,0.32); }
+
+#app.dark{ background:#121317; }
+#app.dark body{ background:#0A0A0C; }
+#app.dark, #app.dark .panel, #app.dark .action-card, #app.dark .home-box, #app.dark .kapt-card,
+#app.dark .stat-item, #app.dark .queue-item, #app.dark .search-card, #app.dark .ff-card,
+#app.dark .casualty-item, #app.dark .choice-btn, #app.dark .howto-card, #app.dark .message-box {
+  background:#1B1D23; color:#EDEDED; border-color:#33353D;
+}
+#app.dark .dash-sub, #app.dark .step-tag, #app.dark .sub, #app.dark .afp-note,
+#app.dark .check-label, #app.dark .stat-label, #app.dark .queue-time, #app.dark .queue-result,
+#app.dark .search-card-body, #app.dark .empty-note, #app.dark .start-sub { color:#A9ADB8; }
+#app.dark .result-title, #app.dark .question, #app.dark .check-value, #app.dark .ff-plan { color:#F5F5F5; }
+#app.dark .afp-item{ background:#25272E; }
+#app.dark .facility-field select, #app.dark .home-inputs input, #app.dark #sh-note-input,
+#app.dark #sh-confirm-ho { background:#25272E; color:#EDEDED; border-color:#3A3C45; }
+#app.dark .restart-btn{ color:#A9ADB8; border-color:#33353D; }
+#app.dark .utility-btn.secondary{ background:#1B1D23; color:#EDEDED; border-color:#33353D; }

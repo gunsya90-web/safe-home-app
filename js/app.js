@@ -6,11 +6,26 @@
   var currentRole = 'resident';
   var viewRoot, topbar, topbarLoc, progressWrap, progressFill, sosFab, roleTabs;
 
+  // 링크(URL)에 담긴 role에 따라 접근 가능한 화면을 제한한다.
+  // ?role=resident → 입주민 화면만 / ?role=situation → 상황실+소방대원 / ?role=firefighter → 소방대원만
+  // role 파라미터가 없으면(기본 접속 주소) 가장 안전한 기본값인 입주민 화면만 허용한다.
+  var ROLE_ACCESS = {
+    resident: ['resident'],
+    situation: ['situation', 'firefighter'],
+    firefighter: ['firefighter']
+  };
+  var allowedRoles = ['resident'];
+
   var MODULES = {
     resident: { mount: function (el) { SAFEHOME.Resident.mount(el); }, unmount: function () {} },
     situation: { mount: function (el) { SAFEHOME.Situation.mount(el); }, unmount: function () { SAFEHOME.Situation.unmount(); } },
     firefighter: { mount: function (el) { SAFEHOME.Firefighter.mount(el); }, unmount: function () { SAFEHOME.Firefighter.unmount(); } }
   };
+
+  function parseUrlParams() {
+    var params = new URLSearchParams(location.search);
+    return { role: params.get('role'), apt: params.get('apt'), dong: params.get('dong'), incident: params.get('incident') };
+  }
 
   function init() {
     viewRoot = document.getElementById('view-root');
@@ -21,26 +36,44 @@
     sosFab = document.getElementById('sosFab');
     roleTabs = document.getElementById('roleTabs');
 
+    var urlParams = parseUrlParams();
+    allowedRoles = ROLE_ACCESS[urlParams.role] || ['resident'];
+    if (urlParams.apt || urlParams.dong) {
+      // 상황실이 발급한 링크로 들어온 경우 — 아파트/동을 잠그고 세대(호)만 입력받는다.
+      SAFEHOME.urlLockedAddress = { apt: urlParams.apt || '', dong: urlParams.dong || '' };
+      SAFEHOME.store.setLocation({ apt: urlParams.apt || '', dong: urlParams.dong || '', ho: SAFEHOME.store.getState().location.ho });
+    }
+    if (urlParams.incident) SAFEHOME.urlIncidentId = urlParams.incident;
+
     roleTabs.querySelectorAll('.role-tab').forEach(function (btn) {
-      btn.addEventListener('click', function () { switchRole(btn.getAttribute('data-role')); });
+      var r = btn.getAttribute('data-role');
+      if (allowedRoles.indexOf(r) === -1) {
+        btn.parentNode.removeChild(btn);
+      } else {
+        btn.addEventListener('click', function () { switchRole(r); });
+      }
     });
+    // 접근 가능한 화면이 하나뿐이면 굳이 탭을 보여줄 필요가 없다.
+    if (allowedRoles.length <= 1) roleTabs.style.display = 'none';
+
     var resetBtn = document.getElementById('resetDemoBtn');
     if (resetBtn) resetBtn.addEventListener('click', function () {
       if (confirm('데모 데이터를 초기 상태로 되돌릴까요? (모든 세대 상태가 초기화됩니다)')) {
         SAFEHOME.store.reset();
         SAFEHOME.toast('데모 데이터를 초기화했습니다.');
-        switchRole('resident');
+        switchRole(allowedRoles[0]);
       }
     });
+    initTheme();
 
     SAFEHOME.store.subscribe(function () { refreshBadges(); updateChrome(); });
-    switchRole('resident');
+    switchRole(allowedRoles[0]);
     refreshBadges();
     registerServiceWorker();
   }
 
   function switchRole(role) {
-    if (!MODULES[role]) role = 'resident';
+    if (!MODULES[role] || allowedRoles.indexOf(role) === -1) role = allowedRoles[0];
     MODULES[currentRole].unmount();
     currentRole = role;
     document.getElementById('app').classList.toggle('wide', role !== 'resident');
@@ -58,9 +91,8 @@
       var loc = state.location;
       topbarLoc.textContent = (loc.apt || loc.dong || loc.ho) ? SAFEHOME.locText(loc) : '';
     } else {
-      topbarLoc.textContent = state.incident.confirmed
-        ? SAFEHOME.locText({ apt: state.incident.apt, dong: state.incident.dong })
-        : '사건 위치 미확정';
+      var openCount = SAFEHOME.store.listIncidents().filter(function (i) { return !i.closed; }).length;
+      topbarLoc.textContent = openCount ? openCount + '건 진행 중' : '사건 위치 미확정';
     }
     if (currentRole === 'resident') {
       sosFab.style.display = 'block';
@@ -80,6 +112,9 @@
     } else if (step === 'result') {
       progressWrap.style.display = 'block';
       progressFill.style.width = '100%';
+    } else if (step === 'panic') {
+      progressWrap.style.display = 'block';
+      // 진행률은 그대로 유지 — 패닉 안내는 별도 단계로 치지 않는다.
     } else {
       progressWrap.style.display = 'block';
       progressFill.style.width = (((step - 1) / 5) * 100) + '%';
@@ -88,10 +123,15 @@
   }
 
   function refreshBadges() {
-    var units = SAFEHOME.store.getUnits();
+    var incidents = SAFEHOME.store.listIncidents().filter(function (i) { return !i.closed; });
+    var reported = 0, danger = 0;
+    incidents.forEach(function (inc) {
+      SAFEHOME.store.getUnits(inc.id).forEach(function (u) {
+        if (u.status !== 'unresponded') reported++;
+        if (u.status === 'danger') danger++;
+      });
+    });
     var pending = SAFEHOME.store.getPendingReports().length;
-    var reported = units.filter(function (u) { return u.status !== 'unresponded'; }).length;
-    var danger = units.filter(function (u) { return u.status === 'danger'; }).length;
     setBadge('badge-situation', pending + reported);
     setBadge('badge-firefighter', danger);
   }
@@ -100,6 +140,25 @@
     if (!el) return;
     if (n > 0) { el.textContent = n; el.style.display = 'inline-flex'; }
     else { el.style.display = 'none'; }
+  }
+
+  var THEME_KEY = 'safehome_theme';
+  function initTheme() {
+    var appEl = document.getElementById('app');
+    var btn = document.getElementById('themeToggleBtn');
+    var dark = localStorage.getItem(THEME_KEY) === 'dark';
+    applyTheme(dark);
+    if (btn) btn.addEventListener('click', function () {
+      dark = !appEl.classList.contains('dark');
+      applyTheme(dark);
+      try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch (e) {}
+    });
+  }
+  function applyTheme(dark) {
+    var appEl = document.getElementById('app');
+    var btn = document.getElementById('themeToggleBtn');
+    appEl.classList.toggle('dark', dark);
+    if (btn) btn.textContent = dark ? '☀️' : '🌙';
   }
 
   function registerServiceWorker() {

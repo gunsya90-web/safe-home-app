@@ -6,25 +6,39 @@
 
   var esc = SAFEHOME.escapeHtml;
   var root = null;
-  var step = 0;           // 0=start, 1~5=질문, 'result'=결과
+  var step = 0;           // 0=start, 1~5=질문, 'panic'=위험응답 즉시안내, 'result'=결과
   var answers = {};
   var lastResult = null;
+  var pendingAfterPanic = null;
+
+  // 패닉 단축 경로 — 명백히 위험한 답을 고르면 나머지 질문을 다 마치기 전에 즉시 행동요령부터 보여준다.
+  var PANIC_TIPS = {
+    q2: { '화염보임': { icon: '🔥', text: '지금 집 안에 화염이 보입니다. 문이 뜨겁지 않다면 신속히 대피를 시도하고, 어렵다면 화장실로 이동해 문을 닫고 젖은 수건으로 틈을 막으세요.' } },
+    q3: {
+      '문밖화염있음': { icon: '⛔', text: '현관 밖에 화염이 있어 나갈 수 없습니다. 무리하게 문을 열지 말고, 대체 대피시설(대피공간·경량칸막이 등)을 확인하거나 창문에서 구조 신호를 보내세요.' },
+      '문손잡이뜨겁다': { icon: '🌡️', text: '문 반대편에 화염이 있을 수 있습니다. 문을 열지 말고 대체 대피시설을 먼저 확인하세요.' },
+      '문을열수없다': { icon: '⛔', text: '현관문을 열 수 없는 상황입니다. 화장실로 이동해 문을 닫고 구조를 요청하세요.' }
+    },
+    q4: { '있다': { icon: '🌫️', text: '복도·계단에 연기·화염이 있어 위험합니다. 무리하게 이동하지 말고 대체 경로를 먼저 확인하세요.' } }
+  };
 
   function mount(container) {
     root = container;
     step = 0;
     answers = {};
     lastResult = null;
+    pendingAfterPanic = null;
     render();
   }
 
   function loc() { return SAFEHOME.store.getState().location; }
-  function afp() { return SAFEHOME.store.getState().afp; }
+  function afp() { var L = loc(); return SAFEHOME.store.getAfpForAddress(L.apt, L.dong); }
 
   function render() {
     if (!root) return;
     if (step === 0) return renderStart();
     if (step === 'result') return renderResult();
+    if (step === 'panic') return renderPanicTip();
     return renderQuestion(step);
   }
 
@@ -32,16 +46,26 @@
   function renderStart() {
     var L = loc();
     var A = afp();
-    var fields = SAFEHOME.AFP_CORE_FIELDS.map(function (f) {
-      var v = A[f.key];
-      var sel = v === true ? 'true' : (v === false ? 'false' : 'unknown');
-      return '<div class="facility-field"><label>' + esc(f.label) + '</label>' +
-        '<select data-afp-key="' + f.key + '">' +
-        '<option value="unknown"' + (sel === 'unknown' ? ' selected' : '') + '>확인 필요</option>' +
-        '<option value="true"' + (sel === 'true' ? ' selected' : '') + '>' + esc(f.yes) + '</option>' +
-        '<option value="false"' + (sel === 'false' ? ' selected' : '') + '>' + esc(f.no) + '</option>' +
-        '</select></div>';
-    }).join('');
+    var locked = SAFEHOME.urlLockedAddress; // 상황실이 발급한 링크로 들어온 경우 아파트/동이 고정된다.
+
+    var addressHtml = locked
+      ? '<div class="home-box-title">🏠 우리집 정보 <span style="font-size:11px;color:#6B6B6B;">동까지는 자동 지정되었습니다</span></div>' +
+        '<div class="loc-pill" style="margin-bottom:10px;">📍 ' + esc(locked.apt) + ' ' + esc(locked.dong) + '동</div>' +
+        '<div class="home-inputs" style="grid-template-columns:1fr;">' +
+          '<input id="sh-ho" placeholder="호 (예: 902)" value="' + esc(L.ho) + '">' +
+        '</div>' +
+        '<button class="save-btn" id="sh-save-loc">호수 저장</button>'
+      : '<div class="home-box-title">🏠 우리집 정보 <span style="font-size:11px;color:#6B6B6B;">신고 시 알려주는 위치입니다</span></div>' +
+        '<div class="home-inputs">' +
+          '<input id="sh-apt" placeholder="아파트명" value="' + esc(L.apt) + '">' +
+          '<input id="sh-dong" placeholder="동" value="' + esc(L.dong) + '">' +
+          '<input id="sh-ho" placeholder="호 (예: 902)" value="' + esc(L.ho) + '">' +
+        '</div>' +
+        '<button class="save-btn" id="sh-save-loc">위치 저장</button>';
+
+    var afpDisplay = '<div class="facility-grid">' + SAFEHOME.AFP_CORE_FIELDS.map(function (f) {
+      return '<div class="afp-item ' + SAFEHOME.ynClass(A[f.key]) + '" style="text-align:left;">' + f.icon + ' ' + esc(f.label) + '<br>' + esc(SAFEHOME.ynText(A[f.key], f.yes, f.no)) + '</div>';
+    }).join('') + '</div>';
 
     root.innerHTML =
       '<div class="start-screen">' +
@@ -50,21 +74,13 @@
         '<div class="start-sub">지금부터 상황에 따라 필요한 질문에 답해주세요.<br>신고자님의 상황에 맞는 <strong>가장 안전한 대피 방법</strong>을 안내해드립니다.</div>' +
         '<div class="mode-note"><strong>긴급모드</strong>: 상황별 질문에 답하면 현재 상황에 맞는 행동요령, 119 전달문, 가족 공유 문구를 바로 제공합니다. 이 신고는 119 상황실로 전달되며, <strong>정확한 사건 위치(동·호)는 상황실에서 확인 후 확정</strong>합니다.</div>' +
 
-        '<div class="home-box">' +
-          '<div class="home-box-title">🏠 우리집 정보 <span style="font-size:11px;color:#6B6B6B;">신고 시 알려주는 위치입니다</span></div>' +
-          '<div class="home-inputs">' +
-            '<input id="sh-apt" placeholder="아파트명" value="' + esc(L.apt) + '">' +
-            '<input id="sh-dong" placeholder="동" value="' + esc(L.dong) + '">' +
-            '<input id="sh-ho" placeholder="호 (예: 902)" value="' + esc(L.ho) + '">' +
-          '</div>' +
-          '<button class="save-btn" id="sh-save-loc">위치 저장</button>' +
-        '</div>' +
+        '<div class="home-box">' + addressHtml + '</div>' +
 
         '<div class="kapt-card">' +
-          '<h3>🏢 K-apt 소방시설 현황</h3>' +
-          '<p>등록된 단지라면 아래 시설현황이 자동으로 조회됩니다. 등록되지 않았거나 값이 다르면 직접 수정해 저장할 수 있습니다.</p>' +
-          '<div class="facility-grid">' + fields + '</div>' +
-          '<div class="kapt-actions"><button class="primary" id="sh-save-afp">시설현황 저장</button><button class="ghost" id="sh-lookup-afp">🔎 등록된 건물정보 조회</button></div>' +
+          '<h3>🏢 소방시설 현황 (조회 전용)</h3>' +
+          '<p>소방시설 현황은 소방서가 사전 등록한 값입니다. 입주민은 직접 수정할 수 없고, 실제와 다르면 아래에서 수정 요청만 가능합니다.</p>' +
+          afpDisplay +
+          '<div class="kapt-actions"><button class="ghost" id="sh-lookup-afp">🔎 등록된 건물정보 다시 조회</button><button class="ghost" id="sh-request-correction">🛠 시설정보 수정 요청</button></div>' +
           '<div class="afp-note">※ 결과 안내에서 미설치·확인 필요 시설은 자동 제외하고, 가능한 대체 행동으로 판단합니다.</div>' +
         '</div>' +
 
@@ -72,38 +88,35 @@
         '<div class="start-note">⏱ 약 30초 소요 · 언제든 119와 통화 가능</div>' +
       '</div>';
 
-    document.getElementById('sh-save-loc').onclick = function () {
-      var apt = document.getElementById('sh-apt').value.trim();
-      var dong = document.getElementById('sh-dong').value.trim();
+    var saveLocBtn = document.getElementById('sh-save-loc');
+    if (saveLocBtn) saveLocBtn.onclick = function () {
+      var apt = locked ? locked.apt : document.getElementById('sh-apt').value.trim();
+      var dong = locked ? locked.dong : document.getElementById('sh-dong').value.trim();
       var ho = document.getElementById('sh-ho').value.trim();
       SAFEHOME.store.setLocation({ apt: apt, dong: dong, ho: ho });
       var building = SAFEHOME.findBuildingByAddress(apt, dong);
+      renderStart();
       if (building) {
-        SAFEHOME.store.setAfp(building.core);
-        renderStart();
         SAFEHOME.toast('우리집 정보가 저장되었습니다. 등록된 건물정보를 불러왔습니다.');
       } else {
-        SAFEHOME.toast('우리집 정보가 저장되었습니다. (등록된 건물정보 없음 — 직접 입력해주세요)');
+        SAFEHOME.toast('우리집 정보가 저장되었습니다. (등록된 건물정보 없음)');
       }
       SAFEHOME.app && SAFEHOME.app.refreshBadges && SAFEHOME.app.refreshBadges();
     };
-    document.getElementById('sh-save-afp').onclick = function () {
-      var patch = {};
-      root.querySelectorAll('[data-afp-key]').forEach(function (sel) {
-        var v = sel.value;
-        patch[sel.getAttribute('data-afp-key')] = v === 'true' ? true : (v === 'false' ? false : null);
-      });
-      SAFEHOME.store.setAfp(patch);
-      SAFEHOME.toast('K-apt 소방시설 현황이 저장되었습니다.');
-    };
     document.getElementById('sh-lookup-afp').onclick = function () {
       var building = SAFEHOME.findBuildingByAddress(L.apt, L.dong);
+      renderStart();
       if (building) {
-        SAFEHOME.store.setAfp(building.core);
-        renderStart();
         SAFEHOME.toast(building.apt + ' ' + building.dong + '동 등록 정보를 불러왔습니다.');
       } else {
-        SAFEHOME.toast('등록된 건물 정보가 없습니다. 아파트명·동을 확인하거나 직접 입력해주세요.');
+        SAFEHOME.toast('등록된 건물 정보가 없습니다. 아파트명·동을 확인해주세요.');
+      }
+    };
+    document.getElementById('sh-request-correction').onclick = function () {
+      var text = prompt('실제와 다른 시설현황이 있다면 적어주세요. (예: 하향식 피난구가 실제로는 설치되어 있음)');
+      if (text && text.trim()) {
+        SAFEHOME.store.submitCorrectionRequest({ apt: L.apt, dong: L.dong, ho: L.ho, text: text.trim() });
+        SAFEHOME.toast('수정 요청이 119 상황실로 전달되었습니다.');
       }
     };
     document.getElementById('sh-start').onclick = function () { goTo(1); };
@@ -142,12 +155,44 @@
       // 화재가 우리 집일 때는 '화점 대비 위치'를 물을 필요가 없다.
       answers.q5 = '같은층';
     }
+
+    var tip = PANIC_TIPS[qid] && PANIC_TIPS[qid][value];
+    if (tip) {
+      pendingAfterPanic = qid;
+      step = 'panic';
+      render();
+      window.scrollTo(0, 0);
+      return;
+    }
+    proceedAfterAnswer(qid);
+  }
+
+  function proceedAfterAnswer(qid) {
     if (qid === 'q4' && answers.q1 === '우리집') {
       computeResult();
       return;
     }
     var next = parseInt(qid.slice(1), 10) + 1;
     if (next <= 5) goTo(next); else computeResult();
+  }
+
+  function renderPanicTip() {
+    var qid = pendingAfterPanic;
+    var tip = PANIC_TIPS[qid][answers[qid]];
+    root.innerHTML =
+      '<div class="start-screen">' +
+        '<div class="result-icon r-danger" style="margin:0 auto 16px;">' + tip.icon + '</div>' +
+        '<div class="start-title">지금 즉시 확인하세요</div>' +
+        '<div class="start-sub">' + esc(tip.text) + '</div>' +
+        '<a href="tel:119" class="start-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;margin-bottom:10px;">📞 119 바로 전화하기</a>' +
+        '<button class="restart-btn" id="sh-panic-continue" style="width:100%;">나머지 질문 계속하기 →</button>' +
+      '</div>';
+    document.getElementById('sh-panic-continue').onclick = function () {
+      var q = pendingAfterPanic;
+      pendingAfterPanic = null;
+      proceedAfterAnswer(q);
+    };
+    updateChrome('panic');
   }
 
   function goTo(n) {
@@ -210,7 +255,7 @@
     var matchHtml = '';
     var doneHtml = '';
     if (report) {
-      matchHtml = report.matched
+      matchHtml = report.matchedIncidentId
         ? '<div class="tag-ok" style="display:block;text-align:center;margin-bottom:14px;">✅ 119 상황실에서 위치를 확인했습니다</div>'
         : '<div class="tag-warn" style="display:block;text-align:center;margin-bottom:14px;">🕒 119 상황실에서 신고 위치를 확인하는 중입니다</div>';
       if (report.status !== 'safe') {

@@ -49,6 +49,26 @@
     return '<div class="occ-grid">' + rows + '</div>';
   };
 
+  // 접기/펼치기 가능한 패널(아코디언). 우선순위가 낮은 참고용 패널을 이걸로 감싸면
+  // 기본은 펼쳐져 있되 사용자가 접어서 화면 스크롤 길이를 줄일 수 있다.
+  SAFEHOME.detailsPanel = function (titleHtml, bodyHtml, opts) {
+    opts = opts || {};
+    var style = opts.style ? ' style="' + opts.style + '"' : '';
+    var idAttr = opts.id ? ' data-panel-id="' + opts.id + '"' : '';
+    var isOpen = opts.openState !== undefined ? opts.openState : !opts.closed;
+    var openAttr = isOpen ? ' open' : '';
+    return '<details class="panel"' + style + idAttr + openAttr + '><summary class="panel-title">' + titleHtml + '</summary>' +
+      '<div class="panel-collapsible-body">' + bodyHtml + '</div></details>';
+  };
+
+  // <details class="panel" data-panel-id="..."> 들의 접기/펼치기 상태를 렌더링 간에 기억해두기 위한 헬퍼.
+  // stateObj는 호출부(situation.js/firefighter.js)가 소유한 { [id]: boolean } 객체다.
+  SAFEHOME.bindPanelToggles = function (root, stateObj) {
+    root.querySelectorAll('details.panel[data-panel-id]').forEach(function (d) {
+      d.addEventListener('toggle', function () { stateObj[d.getAttribute('data-panel-id')] = d.open; });
+    });
+  };
+
   // 시설 설치 현황을 표(그리드)로 렌더링 — 입주민/119 상황실/소방대원 화면에서 공용으로 쓴다.
   // fields를 생략하면 피난시설(AFP_CORE_FIELDS) 기준이고, AFP_SUPPRESSION_FIELDS를 넘기면 소화시설 그리드가 된다.
   SAFEHOME.renderAfpGrid = function (afp, fields) {
