@@ -44,16 +44,22 @@
     return { dead: 0, severe: 0, minor: 0, guided: 0, selfEvacuated: 0 };
   }
 
+  function ttlMs() { return (state.linkTtlHours || 2) * 3600000; }
+
   function makeIncident(building, officialHo) {
+    var now = Date.now();
     return {
       id: newIncidentId(),
       buildingId: building.id, apt: building.apt, dong: building.dong,
-      officialHo: officialHo || null, confirmedAt: Date.now(), closed: false,
+      officialHo: officialHo || null, confirmedAt: now, closed: false,
       units: SAFEHOME.generateUnits(building, officialHo || null),
       afp: Object.assign({}, building.core),
       dispatch: { dispatched: false, dispatchedAt: null },
       dispatchNote: '',
-      casualties: makeCasualties()
+      casualties: makeCasualties(),
+      // 보안: 상황실이 발급하는 링크는 기본 2시간 후 만료된다(관리자가 조정 가능). 링크 재발급 시 갱신된다.
+      residentLinkExp: now + ttlMs(),
+      firefighterLinkExp: now + ttlMs()
     };
   }
 
@@ -76,6 +82,7 @@
       location: { apt: '', dong: '', ho: '' },
       correctionRequests: [],
       actionLog: [],
+      linkTtlHours: 2, // 상황실 발급 링크의 기본 유효시간(시간) — 상황실에서 조정 가능
       updatedAt: Date.now()
     };
   }
@@ -253,6 +260,26 @@
     },
 
     getActionLog: function () { return state.actionLog || []; },
+
+    // ---------------- 발급 링크 유효시간 (보안) ----------------
+    getLinkTtlHours: function () { return state.linkTtlHours || 2; },
+    setLinkTtlHours: function (hours) {
+      var h = Number(hours);
+      if (!h || h <= 0) return;
+      state.linkTtlHours = h;
+      logAction('119 상황실', '발급 링크 기본 유효시간을 ' + h + '시간으로 변경');
+      commit();
+    },
+    // 이미 발급된 링크의 만료시각을 지금부터 다시 연장(재발급)한다.
+    regenerateIncidentLinks: function (incidentId) {
+      var inc = getIncident(incidentId) || activeIncident();
+      if (!inc) return;
+      var now = Date.now();
+      inc.residentLinkExp = now + ttlMs();
+      inc.firefighterLinkExp = now + ttlMs();
+      logAction('119 상황실', inc.apt + ' ' + inc.dong + '동 — 링크 재발급 (유효시간 연장)');
+      commit();
+    },
 
     // ---------------- 119 종합상황실 (다중 사건) ----------------
     listIncidents: function () {

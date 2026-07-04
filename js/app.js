@@ -24,7 +24,10 @@
 
   function parseUrlParams() {
     var params = new URLSearchParams(location.search);
-    return { role: params.get('role'), apt: params.get('apt'), dong: params.get('dong'), incident: params.get('incident') };
+    return {
+      role: params.get('role'), apt: params.get('apt'), dong: params.get('dong'),
+      incident: params.get('incident'), exp: params.get('exp')
+    };
   }
 
   function init() {
@@ -37,6 +40,13 @@
     roleTabs = document.getElementById('roleTabs');
 
     var urlParams = parseUrlParams();
+
+    // 보안: 상황실이 발급한 링크(?exp=만료시각)가 만료됐으면 화면을 아예 열어주지 않는다.
+    if (urlParams.exp && Date.now() > parseInt(urlParams.exp, 10)) {
+      showExpiredScreen();
+      return;
+    }
+
     allowedRoles = ROLE_ACCESS[urlParams.role] || ['resident'];
     if (urlParams.apt || urlParams.dong) {
       // 상황실이 발급한 링크로 들어온 경우 — 아파트/동을 잠그고 세대(호)만 입력받는다.
@@ -159,6 +169,21 @@
     var btn = document.getElementById('themeToggleBtn');
     appEl.classList.toggle('dark', dark);
     if (btn) btn.textContent = dark ? '☀️' : '🌙';
+  }
+
+  function showExpiredScreen() {
+    document.getElementById('roleTabs').style.display = 'none';
+    document.getElementById('progressWrap').style.display = 'none';
+    document.getElementById('sosFab').style.display = 'none';
+    document.getElementById('topbar').style.display = 'flex';
+    document.getElementById('topbarLoc').textContent = '';
+    document.getElementById('view-root').innerHTML =
+      '<div class="start-screen">' +
+        '<div class="start-emoji">⏱</div>' +
+        '<div class="start-title">이 링크는 만료되었습니다</div>' +
+        '<div class="start-sub">보안을 위해 119 상황실이 발급한 링크는 일정 시간이 지나면 자동으로 접속이 차단됩니다.<br>119 상황실에 새 링크 발급을 요청해주세요.</div>' +
+        '<a href="tel:119" class="start-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;">📞 119로 전화하기</a>' +
+      '</div>';
   }
 
   function registerServiceWorker() {

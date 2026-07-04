@@ -185,8 +185,11 @@
   }
 
   function activeIncidentHeaderHtml(inc) {
-    var residentLink = location.origin + location.pathname + '?role=resident&apt=' + encodeURIComponent(inc.apt) + '&dong=' + encodeURIComponent(inc.dong);
-    var firefighterLink = location.origin + location.pathname + '?role=firefighter&incident=' + encodeURIComponent(inc.id);
+    var residentLink = location.origin + location.pathname + '?role=resident&apt=' + encodeURIComponent(inc.apt) + '&dong=' + encodeURIComponent(inc.dong) + '&exp=' + inc.residentLinkExp;
+    var firefighterLink = location.origin + location.pathname + '?role=firefighter&incident=' + encodeURIComponent(inc.id) + '&exp=' + inc.firefighterLinkExp;
+    var now = Date.now();
+    var residentExpired = now > inc.residentLinkExp;
+    var ffExpired = now > inc.firefighterLinkExp;
     return '<div class="panel" style="border-color:#A5D6A7;background:#F4FBF4;">' +
       '<h3 class="panel-title">🏢 확정된 사건 위치</h3>' +
       '<div style="font-size:15px;font-weight:900;margin-bottom:4px;">' + esc(inc.apt) + ' ' + esc(inc.dong) + '동' + (inc.officialHo ? ' · 최초 신고 ' + esc(inc.officialHo) + '호' : '') + '</div>' +
@@ -198,10 +201,19 @@
       '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);text-align:left;">' +
         '<div style="font-size:12px;font-weight:800;color:var(--gray);margin-bottom:6px;">🔗 이 동 입주민에게 배포할 링크 (아파트·동 자동 지정, 호만 입력)</div>' +
         '<input readonly value="' + esc(residentLink) + '" id="sh-resident-link" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:12px;background:#fff;">' +
-        '<button class="utility-btn" style="width:100%;margin-top:8px;" id="sh-copy-link">📋 입주민 링크 복사</button>' +
+        '<div style="font-size:11px;margin:6px 0;color:' + (residentExpired ? 'var(--red)' : 'var(--gray)') + ';font-weight:800;">' + (residentExpired ? '⛔ 만료됨' : '⏱ ' + SAFEHOME.fmtTime(inc.residentLinkExp) + ' 까지 유효') + '</div>' +
+        '<button class="utility-btn" style="width:100%;" id="sh-copy-link">📋 입주민 링크 복사</button>' +
         '<div style="font-size:12px;font-weight:800;color:var(--gray);margin:12px 0 6px;">🔗 이 사건 전담 소방대원에게 배포할 링크</div>' +
         '<input readonly value="' + esc(firefighterLink) + '" id="sh-firefighter-link" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:12px;background:#fff;">' +
-        '<button class="utility-btn" style="width:100%;margin-top:8px;" id="sh-copy-ff-link">📋 소방대원 링크 복사</button>' +
+        '<div style="font-size:11px;margin:6px 0;color:' + (ffExpired ? 'var(--red)' : 'var(--gray)') + ';font-weight:800;">' + (ffExpired ? '⛔ 만료됨' : '⏱ ' + SAFEHOME.fmtTime(inc.firefighterLinkExp) + ' 까지 유효') + '</div>' +
+        '<button class="utility-btn" style="width:100%;" id="sh-copy-ff-link">📋 소방대원 링크 복사</button>' +
+        '<button class="utility-btn secondary" style="width:100%;margin-top:8px;" id="sh-regen-links">🔄 두 링크 모두 재발급 (유효시간 연장)</button>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11.5px;color:var(--gray);">' +
+          '<span>기본 유효시간(시간):</span>' +
+          '<input id="sh-link-ttl" type="number" min="1" step="1" value="' + SAFEHOME.store.getLinkTtlHours() + '" style="width:56px;border:1.5px solid var(--line);border-radius:8px;padding:4px 6px;font-size:12px;">' +
+          '<button id="sh-save-ttl" style="border:none;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:800;background:var(--ink);color:#fff;cursor:pointer;">저장</button>' +
+          '<span style="font-size:10.5px;">(새로 발급되는 링크부터 적용)</span>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }
@@ -511,6 +523,19 @@
       } else {
         input.select();
       }
+    };
+    var regenLinksBtn = document.getElementById('sh-regen-links');
+    if (regenLinksBtn) regenLinksBtn.onclick = function () {
+      var active = SAFEHOME.store.getActiveIncident();
+      if (!active) return;
+      SAFEHOME.store.regenerateIncidentLinks(active.id);
+      SAFEHOME.toast('두 링크의 유효시간이 지금부터 다시 ' + SAFEHOME.store.getLinkTtlHours() + '시간으로 연장되었습니다.');
+    };
+    var saveTtlBtn = document.getElementById('sh-save-ttl');
+    if (saveTtlBtn) saveTtlBtn.onclick = function () {
+      var hours = document.getElementById('sh-link-ttl').value;
+      SAFEHOME.store.setLinkTtlHours(hours);
+      SAFEHOME.toast('기본 유효시간이 ' + SAFEHOME.store.getLinkTtlHours() + '시간으로 저장되었습니다. (기존 발급 링크에는 소급 적용되지 않음)');
     };
     root.querySelectorAll('[data-resolve-correction]').forEach(function (el) {
       el.onclick = function () {
