@@ -10,7 +10,7 @@ CSV(헤더 없음, 아파트명,동,호)로 변환하는 스크립트.
    - 국토교통부_공동주택 단지 목록제공 서비스 (getSigunguAptList3)
    - 국토교통부_공동주택 기본 정보제공 서비스 (getAphusBassInfoV4)
    - 국토교통부_건축물대장정보 서비스 (전유부 조회 — 동명칭/호명칭)
-3. `pip install PublicDataReader pandas requests` 로 라이브러리를 설치합니다.
+3. `pip install pandas requests xmltodict` 로 라이브러리를 설치합니다.
 4. 서비스키는 코드에 직접 적지 않고, 실행 직전에 환경변수로만 넘깁니다(이 저장소는 공개
    저장소라서, 키를 파일에 적어두면 커밋될 때 그대로 공개됩니다):
 
@@ -59,9 +59,9 @@ import urllib.parse
 try:
     import pandas as pd
     import requests
-    from PublicDataReader import BuildingLedger
+    import xmltodict
 except ImportError:
-    sys.exit("먼저 설치하세요: pip install PublicDataReader pandas requests")
+    sys.exit("먼저 설치하세요: pip install pandas requests xmltodict")
 
 # 서비스키는 파일에 직접 적지 않고 환경변수로만 받는다.
 SERVICE_KEY = os.environ.get("DAEGU_API_SERVICE_KEY", "")
@@ -81,6 +81,8 @@ SIGUNGU_CODES = {
 
 APT_LIST_URL = "http://apis.data.go.kr/1613000/AptListService3/getSigunguAptList3"
 APT_BASIS_URL = "http://apis.data.go.kr/1613000/AptBasisInfoServiceV4/getAphusBassInfoV4"
+EXPOS_INFO_URL = "http://apis.data.go.kr/1613000/BldRgstHubService/getBrExposInfo"  # 전유부(동/호명칭) 조회
+REQUEST_TIMEOUT_SEC = 15  # 이 시간 안에 응답이 없으면 포기하고 다음으로 넘어간다(무한 대기 방지)
 OUTPUT_CSV = "daegu_buildings.csv"
 REQUEST_INTERVAL_SEC = 1.0  # 공공데이터포털 초당 호출 제한 방지용 최소 대기시간
 RETRY_BACKOFF_SEC = [2, 5, 10]  # 요청이 실패하면(대부분 순간적인 호출 제한) 이만큼 기다렸다가 재시도
@@ -106,10 +108,10 @@ def _call_once(base_url, extra_params, sample_tag):
             if mode == "raw":
                 query = urllib.parse.urlencode(extra_params)
                 url = f"{base_url}?serviceKey={SERVICE_KEY}&{query}"
-                resp = requests.get(url, timeout=15)
+                resp = requests.get(url, timeout=REQUEST_TIMEOUT_SEC)
             else:
                 params = dict(extra_params, serviceKey=SERVICE_KEY)
-                resp = requests.get(base_url, params=params, timeout=15)
+                resp = requests.get(base_url, params=params, timeout=REQUEST_TIMEOUT_SEC)
             resp.raise_for_status()
             raw_text = resp.text
             data = resp.json()
@@ -223,34 +225,102 @@ def guess_bun_ji(addr_text):
     return bun, ji
 
 
-def fetch_units(sigungu_code, bdong_code, bun, ji):
-    """3단계: 특정 지번(번지)의 전유부(동명칭/호명칭)를 가져온다. 순간적인 호출 제한에 대비해 재시도한다."""
-    api = BuildingLedger(SERVICE_KEY)
-    attempts = [0] + RETRY_BACKOFF_SEC
+def _call_once_xml(base_url, extra_params, sample_tag):
+    """전유부 API는 XML로만 응답하므로(다른 API들의 JSON용 _call_once와 별도), XML 전용으로 호출한다.
+    항상 timeout을 걸어서, 서버가 응답을 안 주더라도 절대 무한정 기다리지 않는다."""
+    cached_mode = _working_key_mode.get(base_url)
+    modes = [cached_mode] if cached_mode else ["raw", "params"]
     last_error = None
-    for wait_sec in attempts:
-        if wait_sec:
-            time.sleep(wait_sec)
+    for mode in modes:
         try:
-            df = api.get_data(
-                ledger_type="전유부",
-                sigungu_code=sigungu_code,
-                bdong_code=bdong_code,
-                bun=bun,
-                ji=ji or "",
-            )
-            return df if df is not None else pd.DataFrame()
+            if mode == "raw":
+                query = urllib.parse.urlencode(extra_params)
+                url = f"{base_url}?serviceKey={SERVICE_KEY}&{query}"
+                resp = requests.get(url, timeout=REQUEST_TIMEOUT_SEC)
+            else:
+                params = dict(extra_params, serviceKey=SERVICE_KEY)
+                resp = requests.get(base_url, params=params, timeout=REQUEST_TIMEOUT_SEC)
+            resp.raise_for_status()
+            raw_text = resp.text
+            data = xmltodict.parse(raw_text)
         except Exception as e:
-            last_error = e
-    print(f"    [전유부 조회 실패] {sigungu_code}/{bdong_code}/{bun}-{ji}: {last_error}")
-    return pd.DataFrame()
+            last_error = f"({mode}) {e}"
+            continue
+
+        if sample_tag not in _printed_samples:
+            print(f"  [진단:{sample_tag}] 최초 응답 원문(mode={mode}): {raw_text[:500]}")
+            _printed_samples.add(sample_tag)
+
+        response = data.get("response") if isinstance(data, dict) else None
+        if not isinstance(response, dict):
+            last_error = f"({mode}) 예상과 다른 응답 구조: {raw_text[:300]}"
+            continue
+        header = response.get("header") or {}
+        result_code = str(header.get("resultCode", "")).strip()
+        if result_code and result_code not in ("00", "0"):
+            last_error = f"({mode}) resultCode={result_code!r} resultMsg={header.get('resultMsg')!r}"
+            continue
+
+        _working_key_mode[base_url] = mode
+        return response.get("body") or {}, None
+
+    return None, last_error
 
 
-def find_col(df, keywords):
-    for col in df.columns:
-        if any(k in col for k in keywords):
-            return col
-    return None
+EXPOS_PAGE_SIZE = 100  # 이 API는 numOfRows를 크게 요청해도 서버가 한 페이지당 최대 100건으로 잘라서 주는 것으로 확인됨
+
+
+def _fetch_units_page(sigungu_code, bdong_code, bun, ji, page_no):
+    """전유부 한 페이지(최대 EXPOS_PAGE_SIZE건)를 가져온다. 실패하면(대부분 순간적인 호출 제한) 재시도한다."""
+    params = {
+        "numOfRows": str(EXPOS_PAGE_SIZE), "pageNo": str(page_no),
+        "sigunguCd": sigungu_code, "bjdongCd": bdong_code,
+    }
+    if bun:
+        params["bun"] = str(bun).zfill(4)
+    if ji:
+        params["ji"] = str(ji).zfill(4)
+
+    body, err = _call_once_xml(EXPOS_INFO_URL, params, "전유부")
+    if body is None:
+        for wait_sec in RETRY_BACKOFF_SEC:
+            time.sleep(wait_sec)
+            body, err = _call_once_xml(EXPOS_INFO_URL, params, "전유부")
+            if body is not None:
+                break
+    return body, err
+
+
+def fetch_units(sigungu_code, bdong_code, bun, ji):
+    """3단계: 특정 지번(번지)의 전유부(동명칭/호명칭) 전체를 가져온다.
+    한 단지가 EXPOS_PAGE_SIZE세대보다 많으면(대부분의 아파트가 그렇다) 여러 페이지에 걸쳐 나뉘어
+    오므로, totalCount에 도달할 때까지 또는 마지막 페이지(반환 건수가 페이지 크기보다 적음)까지 계속 가져온다."""
+    all_rows = []
+    page_no = 1
+    while True:
+        body, err = _fetch_units_page(sigungu_code, bdong_code, bun, ji, page_no)
+        if body is None:
+            if page_no == 1:
+                print(f"    [전유부 조회 실패] {sigungu_code}/{bdong_code}/{bun}-{ji}: {err}")
+                return []
+            break  # 이미 앞선 페이지는 모아뒀으니 그것만이라도 쓴다
+
+        items = body.get("items")
+        rows = []
+        if items:
+            rows = items.get("item") if isinstance(items, dict) else items
+            if isinstance(rows, dict):
+                rows = [rows]
+        if isinstance(rows, list):
+            all_rows.extend(rows)
+
+        total_count = int(body.get("totalCount", 0) or 0)
+        if not rows or len(all_rows) >= total_count or len(rows) < EXPOS_PAGE_SIZE:
+            break
+        page_no += 1
+        time.sleep(REQUEST_INTERVAL_SEC)
+
+    return all_rows
 
 
 def find_key(d, keywords):
@@ -270,10 +340,11 @@ def main():
         complexes = fetch_all_apt_list(sigungu_name, sigungu_code)
         print(f"  → {sigungu_name} 단지 {len(complexes)}개 확인, 주소·세대(호) 조회 시작")
 
-        for c in complexes:
+        for idx, c in enumerate(complexes, 1):
             apt_name = str(c.get("kaptName", "")).strip()
             kapt_code = str(c.get("kaptCode", "")).strip()
             fallback_bjd_code = str(c.get("bjdCode", "")).strip()
+            print(f"  [{idx}/{len(complexes)}] {apt_name} 처리 중...")
             if not apt_name or not kapt_code:
                 skipped += 1
                 continue
@@ -302,21 +373,21 @@ def main():
 
             units = fetch_units(sgg_code, bdong_code, bun, ji)
             time.sleep(REQUEST_INTERVAL_SEC)
-            if units.empty:
+            if not units:
                 skipped += 1
                 continue
 
-            dong_col = find_col(units, ["동명칭", "dongNm"])
-            ho_col = find_col(units, ["호명칭", "hoNm"])
-            if not dong_col or not ho_col:
-                print(f"    전유부 컬럼을 찾지 못했습니다({apt_name}). 실제 컬럼 목록: {list(units.columns)}")
+            dong_key = find_key(units[0], ["동명칭", "dongNm"])
+            ho_key = find_key(units[0], ["호명칭", "hoNm"])
+            if not dong_key or not ho_key:
+                print(f"    전유부 필드를 찾지 못했습니다({apt_name}). 실제 필드 목록: {list(units[0].keys())}")
                 skipped += 1
                 continue
 
             found = 0
-            for _, u in units.iterrows():
-                dong = str(u.get(dong_col, "")).strip()
-                ho = str(u.get(ho_col, "")).strip()
+            for u in units:
+                dong = str(u.get(dong_key, "")).strip()
+                ho = str(u.get(ho_key, "")).strip()
                 if dong and ho:
                     rows.append({"apt": apt_name, "dong": dong, "ho": ho})
                     found += 1
