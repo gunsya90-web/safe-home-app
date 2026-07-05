@@ -157,12 +157,6 @@ button, input, select{ font-family: inherit; }
 .summary-card ol{margin:0; padding-left:20px;}
 .summary-card li{font-size:15px; line-height:1.8; font-weight:800;}
 
-.message-box{background:#fff; border:2px dashed var(--red); border-radius:14px; padding:16px; margin-bottom:14px;}
-.message-box h3{margin:0 0 10px; font-size:15px; color:var(--red);}
-.message-text{white-space:pre-line; background:#FFF7F7; border-radius:10px; padding:12px; font-size:13.5px; line-height:1.6; margin-bottom:10px;}
-.small-actions{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
-.small-actions button{border:none; border-radius:10px; padding:11px 8px; font-size:13px; font-weight:800; background:var(--red); color:#fff; cursor:pointer;}
-
 .afp-card{background:#F4F9FF; border:2px solid #90CAF9; border-radius:14px; padding:16px; margin-bottom:14px;}
 .afp-card h3{margin:0 0 10px; color:var(--blue); font-size:15px;}
 .afp-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
@@ -172,9 +166,6 @@ button, input, select{ font-family: inherit; }
 
 .mode-note{width:100%; background:#FFF8E1; border:1.5px solid #FFD180; border-radius:12px; padding:12px; font-size:12.5px; line-height:1.55; text-align:left; margin-bottom:16px;}
 
-.kapt-card{background:#fff; border:2px solid var(--line); border-radius:14px; padding:16px; margin:0 0 14px; text-align:left; width:100%;}
-.kapt-card h3{margin:0 0 8px; font-size:15px; font-weight:900; color:var(--ink);}
-.kapt-card p{margin:0 0 12px; color:var(--gray); font-size:12px; line-height:1.5;}
 .facility-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
 .facility-field label{display:block; font-size:11.5px; font-weight:800; color:var(--gray); margin-bottom:4px;}
 .facility-field select{width:100%; border:1.5px solid var(--line); border-radius:9px; padding:9px 8px; font-size:13px; background:#FAFAF8;}
@@ -196,6 +187,10 @@ button, input, select{ font-family: inherit; }
 /* ================= Dashboards (119 / firefighter) ================= */
 .dash-header{ padding:20px 20px 14px; }
 .dash-header.ff{ background:linear-gradient(135deg,#1A1A1A,#33261f); color:#fff; }
+.dash-title-row{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.casualty-chips{ display:flex; gap:6px; flex-wrap:wrap; }
+.casualty-chip{ background:#F1F0EC; border-radius:999px; padding:4px 9px; font-size:11.5px; font-weight:800; color:var(--ink); }
+#app.dark .casualty-chip{ background:#33323A; color:#EDEDED; }
 .dash-title{ font-size:20px; font-weight:900; }
 .dash-sub{ font-size:12.5px; color:var(--gray); margin-top:4px; }
 .dash-header.ff .dash-sub{ color:#D8D0C8; }
@@ -278,25 +273,15 @@ button, input, select{ font-family: inherit; }
 .search-card-title{ font-size:12.5px; font-weight:900; margin-bottom:6px; }
 .search-card-body{ font-size:12px; color:var(--gray); line-height:1.6; }
 
-.ff-floors{ display:flex; flex-direction:column; gap:16px; }
-.ff-floor-group{ display:flex; gap:10px; align-items:flex-start; }
-.ff-floor-label{ width:34px; flex-shrink:0; font-size:12px; font-weight:900; color:var(--gray); text-align:right; padding-top:10px; }
-.ff-floor-row{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:10px; flex:1; }
-.ff-card{ border:1.5px solid var(--line); border-left:6px solid var(--line); border-radius:12px; padding:12px; background:#FAFAF8; min-width:0; }
-.ff-card.status-border-danger{ border-left-color:#D7263D; }
-.ff-card.status-border-moving{ border-left-color:#F0A500; }
-.ff-card.status-border-waiting{ border-left-color:#1565C0; }
-.ff-card.status-border-unresponded{ border-left-color:#9AA0A6; }
-.ff-card-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:6px; }
-.ff-ho{ font-size:15px; font-weight:900; }
-.ff-status{ font-size:12px; font-weight:800; }
 .ff-plan{ font-size:12px; color:var(--ink); margin:8px 0; line-height:1.5; }
 /* 방화장갑 낀 손으로도 오조작 없이 누를 수 있도록 44px 이상의 터치 타겟을 확보한다 (UX 검토 반영) */
 .ff-actions{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
 .ff-actions button{ border:none; border-radius:10px; padding:12px 6px; min-height:44px; font-size:13px; font-weight:800; cursor:pointer; background:var(--ink); color:#fff; }
 .ff-actions button.danger{ background:#FFEBEE; color:var(--red); grid-column:1 / -1; }
-.ff-floorplan-toggle{ width:100%; margin-top:8px; border:1.5px solid var(--line); background:#fff; border-radius:8px; padding:8px; font-size:11.5px; font-weight:800; color:var(--ink); cursor:pointer; }
 .ff-floorplan-box{ margin-top:8px; padding:10px; background:#fff; border:1.5px solid var(--line); border-radius:10px; }
+/* 소방대원 화면의 실시간 세대현황 그리드는 상세패널과 짝을 이루는 주 조작대상이라 칸을 더 크게 키운다 */
+.ff-grid-lg .occ-cell{ width:72px; height:56px; font-size:13px; }
+.ff-grid-lg .occ-floor{ width:38px; font-size:12.5px; }
 
 .correction-card{background:#FFF8E1; border:2px solid #FFD180; border-radius:14px; padding:14px; margin-bottom:14px; font-size:13.5px; line-height:1.6;}
 .correction-card strong{color:var(--amber);}
@@ -314,10 +299,10 @@ button, input, select{ font-family: inherit; }
 #app.wide .stat-label, #app.wide .queue-time, #app.wide .occ-floor, #app.wide .occ-cell,
 #app.wide .badge, #app.wide .topbar .loc { font-size:12px; }
 #app.wide .facility-field label, #app.wide .log-row, #app.wide .tag-warn, #app.wide .tag-info,
-#app.wide .queue-result, #app.wide .legend-item, #app.wide .ff-floorplan-toggle,
+#app.wide .queue-result, #app.wide .legend-item,
 #app.wide .casualty-label, #app.wide .step-tag, #app.wide .loc-pill, #app.wide .afp-item,
 #app.wide .dash-sub, #app.wide .queue-item, #app.wide .check-row, #app.wide .tag-ok,
-#app.wide .search-card-title, #app.wide .search-card-body, #app.wide .ff-floor-label,
+#app.wide .search-card-title, #app.wide .search-card-body,
 #app.wide .afp-note { font-size:13px; }
 
 /* ================= 접기/펼치기 패널 (아코디언, UX 검토 반영) ================= */
@@ -334,9 +319,9 @@ summary.panel-title::after{ content:'▾'; float:right; color:var(--gray); font-
 
 #app.dark{ background:#121317; }
 #app.dark body{ background:#0A0A0C; }
-#app.dark, #app.dark .panel, #app.dark .action-card, #app.dark .home-box, #app.dark .kapt-card,
-#app.dark .stat-item, #app.dark .queue-item, #app.dark .search-card, #app.dark .ff-card,
-#app.dark .casualty-item, #app.dark .choice-btn, #app.dark .howto-card, #app.dark .message-box {
+#app.dark, #app.dark .panel, #app.dark .action-card, #app.dark .home-box,
+#app.dark .stat-item, #app.dark .queue-item, #app.dark .search-card,
+#app.dark .casualty-item, #app.dark .choice-btn, #app.dark .howto-card {
   background:#1B1D23; color:#EDEDED; border-color:#33353D;
 }
 #app.dark .dash-sub, #app.dark .step-tag, #app.dark .sub, #app.dark .afp-note,

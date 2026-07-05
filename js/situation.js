@@ -1,10 +1,9 @@
 /* SAFE-HOME · situation.js
-   119 종합상황실 화면: 신고 큐, 사건 위치 확정(다중 사건 지원), 세대 상세(체크리스트),
-   실시간 세대 현황, 출동 지령.
+   119 종합상황실 화면: 신고 큐, 세대 상세(체크리스트), 실시간 세대 현황.
 
-   신고는 입주민이 말한 위치일 뿐이다. 상황실이 등록된 건물 디렉터리에서 해당 동을 찾아
-   "사건 위치로 확정"해야 비로소 세대 현황판/AFP 정보가 채워지고 소방대원 화면에 노출된다.
-   여러 동에서 동시에 화재가 발생하면 사건을 각각 확정해두고 상단 탭으로 전환하며 관리한다. */
+   사건(화재) 위치 확정·변경, 배포 링크 발급/유효시간 설정은 관리자 모드(admin.js)가 전담한다.
+   상황실은 관리자가 확정해둔 사건을 보고 대응하는 모니터링/대응 화면이며, 여러 사건이 열려있으면
+   상단 탭으로 전환하며 관리한다. */
 (function (SAFEHOME) {
   'use strict';
 
@@ -13,10 +12,6 @@
   var selectedHo = null;
   var unsubscribe = null;
 
-  // 사건 확정 폼의 로컬 UI 상태
-  var confirmMode = null; // null | 'new' | 'edit'
-  var confirmBuildingId = '';
-  var confirmHo = '';
   var afpChecklistOpen = false; // 체크리스트의 "피난시설 존재 여부" 펼침 상태
   var afpOverrideOpen = false; // 세대별 AFP 예외 입력 폼 펼침 상태
   var noteDraft = null; // 상황실 메모 입력창 초안 (null이면 저장된 값을 그대로 표시)
@@ -32,7 +27,6 @@
     unsubscribe = SAFEHOME.store.subscribe(render);
     ensureActiveIncident();
     selectedHo = pickDefaultSelection();
-    confirmMode = SAFEHOME.store.listIncidents().filter(function (i) { return !i.closed; }).length ? null : 'new';
     panelOpenState = {};
     knownCriticalKeys = currentCriticalKeys(); // 처음 들어왔을 때 이미 있던 긴급 건은 알림 대상에서 제외
     render();
@@ -126,7 +120,6 @@
     var incidents = SAFEHOME.store.listIncidents().filter(function (i) { return !i.closed; });
     var active = SAFEHOME.store.getActiveIncident();
     var pending = SAFEHOME.store.getPendingReports();
-    var corrections = SAFEHOME.store.getCorrectionRequests().filter(function (r) { return !r.resolved; });
 
     var units = active ? SAFEHOME.store.getUnits(active.id) : [];
     var reported = active ? reportedUnits(active.id) : [];
@@ -136,21 +129,21 @@
 
     root.innerHTML =
       '<div class="dash-header">' +
-        '<div class="dash-title">📞 119 종합상황실</div>' +
-        '<div class="dash-sub">' + (incidents.length ? incidents.length + '건 진행 중' : '사건 위치 미확정 · 신고 접수 대기') + '</div>' +
+        '<div class="dash-title-row">' +
+          '<div class="dash-title">📞 119 종합상황실</div>' +
+          (active ? casualtyChipsHtml(active.casualties) : '') +
+        '</div>' +
+        '<div class="dash-sub">' + (incidents.length ? incidents.length + '건 진행 중' : '관리자가 화재 위치를 확정하면 여기에 표시됩니다') + '</div>' +
       '</div>' +
       (incidents.length ? incidentTabsHtml(incidents, active) : '') +
-      (confirmMode ? confirmPanelHtml(pending) : '') +
       // 확정된 사건 주소와 일치하지 않는 신고(다른 동/오신고 등)는 상태와 무관하게 항상 눈에 띄게 표시한다.
       (pending.length ? pendingPanelHtml(pending, incidents.length > 0) : '') +
-      (corrections.length ? correctionRequestsHtml(corrections) : '') +
-      (active && !confirmMode ? (
+      (active ? (
         activeIncidentHeaderHtml(active) +
         statBarHtml(counts) +
-        casualtySummaryHtml(active.casualties) +
         '<div class="dash-grid-2">' +
-          facilityPanelHtml(SAFEHOME.BUILDINGS[active.buildingId], active.afp) +
-          specialStructureHtml(SAFEHOME.BUILDINGS[active.buildingId]) +
+          facilityPanelHtml(SAFEHOME.store.getEffectiveBuilding(active.buildingId), active.afp) +
+          specialStructureHtml(SAFEHOME.store.getEffectiveBuilding(active.buildingId)) +
         '</div>' +
         '<div class="dash-grid-2">' +
           '<div class="panel">' +
@@ -166,7 +159,7 @@
       ) : '') +
       actionLogHtml(SAFEHOME.store.getActionLog());
 
-    bindEvents(pending);
+    bindEvents();
     checkNewCriticalAlert();
   }
 
@@ -179,83 +172,15 @@
         esc(inc.apt) + ' ' + esc(inc.dong) + '동' + (urgentCount ? ' <span class="badge">' + urgentCount + '</span>' : '') +
       '</button>';
     }).join('');
-    return '<div class="incident-tabs">' + tabs +
-      '<button class="incident-tab add" id="sh-add-incident">+ 새 사건</button>' +
-    '</div>';
+    return '<div class="incident-tabs">' + tabs + '</div>';
   }
 
+  // 사건 위치/링크/유효시간 변경은 관리자 모드가 전담한다 — 여기서는 확정된 위치를 읽기 전용으로만 보여준다.
   function activeIncidentHeaderHtml(inc) {
-    var residentLink = location.origin + location.pathname + '?role=resident&apt=' + encodeURIComponent(inc.apt) + '&dong=' + encodeURIComponent(inc.dong) + '&exp=' + inc.residentLinkExp;
-    var firefighterLink = location.origin + location.pathname + '?role=firefighter&incident=' + encodeURIComponent(inc.id) + '&exp=' + inc.firefighterLinkExp;
-    var now = Date.now();
-    var residentExpired = now > inc.residentLinkExp;
-    var ffExpired = now > inc.firefighterLinkExp;
     return '<div class="panel" style="border-color:#A5D6A7;background:#F4FBF4;">' +
       '<h3 class="panel-title">🏢 확정된 사건 위치</h3>' +
       '<div style="font-size:15px;font-weight:900;margin-bottom:4px;">' + esc(inc.apt) + ' ' + esc(inc.dong) + '동' + (inc.officialHo ? ' · 최초 신고 ' + esc(inc.officialHo) + '호' : '') + '</div>' +
-      '<div style="font-size:12px;color:var(--gray);margin-bottom:10px;">' + SAFEHOME.fmtTime(inc.confirmedAt) + ' 확정</div>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<button class="utility-btn secondary" id="sh-reopen-confirm">🔁 위치 변경 / 재확인</button>' +
-        '<button class="utility-btn secondary" id="sh-close-incident">🔚 이 사건 종료</button>' +
-      '</div>' +
-      '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);text-align:left;">' +
-        '<div style="font-size:12px;font-weight:800;color:var(--gray);margin-bottom:6px;">🔗 이 동 입주민에게 배포할 링크 (아파트·동 자동 지정, 호만 입력)</div>' +
-        '<input readonly value="' + esc(residentLink) + '" id="sh-resident-link" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:12px;background:#fff;">' +
-        '<div style="font-size:11px;margin:6px 0;color:' + (residentExpired ? 'var(--red)' : 'var(--gray)') + ';font-weight:800;">' + (residentExpired ? '⛔ 만료됨' : '⏱ ' + SAFEHOME.fmtTime(inc.residentLinkExp) + ' 까지 유효') + '</div>' +
-        '<button class="utility-btn" style="width:100%;" id="sh-copy-link">📋 입주민 링크 복사</button>' +
-        '<div style="font-size:12px;font-weight:800;color:var(--gray);margin:12px 0 6px;">🔗 이 사건 전담 소방대원에게 배포할 링크</div>' +
-        '<input readonly value="' + esc(firefighterLink) + '" id="sh-firefighter-link" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:12px;background:#fff;">' +
-        '<div style="font-size:11px;margin:6px 0;color:' + (ffExpired ? 'var(--red)' : 'var(--gray)') + ';font-weight:800;">' + (ffExpired ? '⛔ 만료됨' : '⏱ ' + SAFEHOME.fmtTime(inc.firefighterLinkExp) + ' 까지 유효') + '</div>' +
-        '<button class="utility-btn" style="width:100%;" id="sh-copy-ff-link">📋 소방대원 링크 복사</button>' +
-        '<button class="utility-btn secondary" style="width:100%;margin-top:8px;" id="sh-regen-links">🔄 두 링크 모두 재발급 (유효시간 연장)</button>' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11.5px;color:var(--gray);">' +
-          '<span>기본 유효시간(시간):</span>' +
-          '<input id="sh-link-ttl" type="number" min="1" step="1" value="' + SAFEHOME.store.getLinkTtlHours() + '" style="width:56px;border:1.5px solid var(--line);border-radius:8px;padding:4px 6px;font-size:12px;">' +
-          '<button id="sh-save-ttl" style="border:none;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:800;background:var(--ink);color:#fff;cursor:pointer;">저장</button>' +
-          '<span style="font-size:10.5px;">(새로 발급되는 링크부터 적용)</span>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }
-
-  // --------------------------------------------------------- 사건 위치 확정 폼
-  function confirmPanelHtml(pending) {
-    var title = confirmMode === 'edit' ? '🔁 사건 위치 변경 / 재확인' : '⚠️ 사건 위치 확정 필요';
-    var note = confirmMode === 'edit'
-      ? '현재 사건의 건물·최초 신고 세대를 다시 확인하거나 정정합니다.'
-      : '신고자가 말한 위치는 참고 정보입니다. 등록된 건물 디렉터리에서 해당 동을 찾아 사건 위치로 확정해야 세대 현황판과 소방대원 화면이 활성화됩니다.';
-    return '<div class="panel" style="border-color:#FFD180;background:#FFFBF2;">' +
-      '<h3 class="panel-title">' + title + '</h3>' +
-      '<div class="empty-note" style="padding:4px 4px 12px;text-align:left;">' + esc(note) + '</div>' +
-      confirmFormHtml(pending) +
-    '</div>';
-  }
-
-  function confirmFormHtml(pending) {
-    var buildingOptions = Object.keys(SAFEHOME.BUILDINGS).map(function (id) {
-      var b = SAFEHOME.BUILDINGS[id];
-      return '<option value="' + id + '"' + (confirmBuildingId === id ? ' selected' : '') + '>' + esc(b.apt) + ' ' + esc(b.dong) + '동 (' + b.floors + '층 · ' + b.unitsPerFloor + '세대/층)</option>';
-    }).join('');
-
-    var reportPicker = '';
-    if (pending.length && confirmMode === 'new') {
-      reportPicker = '<div class="facility-field" style="margin-bottom:10px;"><label>기준 신고 선택 (선택)</label>' +
-        '<select id="sh-confirm-report"><option value="">— 직접 입력 —</option>' +
-        pending.map(function (r) {
-          return '<option value="' + esc(r.key) + '">' + esc(r.apt || '(위치 미상)') + ' ' + esc(r.dong ? r.dong + '동 ' : '') + esc(r.ho ? r.ho + '호' : '') + (r.auto ? ' · 자동감지' : '') + '</option>';
-        }).join('') + '</select></div>';
-    }
-
-    return '<div style="text-align:left;">' +
-      reportPicker +
-      '<div class="facility-grid">' +
-        '<div class="facility-field"><label>등록 건물</label><select id="sh-confirm-building"><option value="">건물 선택</option>' + buildingOptions + '</select></div>' +
-        '<div class="facility-field"><label>최초 발화 세대(호)</label><input id="sh-confirm-ho" placeholder="예: 502" value="' + esc(confirmHo) + '" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:13px;background:#FAFAF8;"></div>' +
-      '</div>' +
-      '<div class="kapt-actions" style="margin-top:12px;">' +
-        '<button class="primary" id="sh-confirm-btn">✅ 이 위치로 사건 확정</button>' +
-        (confirmMode === 'edit' ? '<button class="ghost" id="sh-cancel-confirm">취소</button>' : '') +
-      '</div>' +
+      '<div style="font-size:12px;color:var(--gray);">' + SAFEHOME.fmtTime(inc.confirmedAt) + ' 확정 · 위치 변경/링크 발급은 관리자 모드에서 처리합니다</div>' +
     '</div>';
   }
 
@@ -270,18 +195,6 @@
           '<span class="queue-status">' + (r.auto ? '자동감지 신호' : '입주민 신고') + '</span>' +
           '<span class="queue-result">' + (r.notes && r.notes[0] ? esc(r.notes[0]) : '') + '</span>' +
           '<span class="queue-time">' + SAFEHOME.fmtTime(r.updatedAt) + '</span>' +
-        '</div>';
-      }).join('') + '</div>' +
-    '</div>';
-  }
-
-  function correctionRequestsHtml(list) {
-    return '<div class="panel" style="border-color:#90CAF9;">' +
-      '<h3 class="panel-title">🛠 시설정보 수정 요청 <span class="badge">' + list.length + '</span></h3>' +
-      '<div class="queue-list">' + list.map(function (r) {
-        return '<div class="queue-item" style="cursor:default;grid-template-columns:1fr auto;">' +
-          '<span class="queue-ho">' + esc(r.apt || '') + ' ' + esc(r.dong ? r.dong + '동 ' : '') + esc(r.ho ? r.ho + '호' : '') + ' — ' + esc(r.text) + '</span>' +
-          '<button data-resolve-correction="' + esc(r.id) + '" style="border:none;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:800;background:var(--ink);color:#fff;cursor:pointer;">처리완료</button>' +
         '</div>';
       }).join('') + '</div>' +
     '</div>';
@@ -312,7 +225,7 @@
     var body =
       '<div class="check-row"><span class="check-mark">🏠</span><span class="check-label">복층·다락 세대</span><span class="check-value">' + (s.duplexUnits.length ? s.duplexUnits.join(', ') + '호' : '없음') + '</span></div>' +
       '<div class="check-row"><span class="check-mark">🏢</span><span class="check-label">옥상 대피 · 최상층</span><span class="check-value">' + esc(roofOnTopFloor) + '</span></div>' +
-      '<div class="check-row"><span class="check-mark">🧱</span><span class="check-label">복도 형태</span><span class="check-value">' + esc(building.hallwayType) + ' · 총 ' + building.floors + '층 · 세대당 ' + building.unitsPerFloor + '호</span></div>' +
+      '<div class="check-row"><span class="check-mark">🧱</span><span class="check-label">복도 형태</span><span class="check-value">' + esc(building.hallwayType) + ' · ' + esc(SAFEHOME.buildingUnitSummary(building)) + '</span></div>' +
       '<div class="afp-note" style="margin-top:8px;">' + esc(s.duplexNote) + '</div>';
     return SAFEHOME.detailsPanel('🏗️ 건물 특화 구조 정보', body, { id: 'structure', openState: panelOpenState.structure });
   }
@@ -334,13 +247,14 @@
     { key: 'selfEvacuated', label: '자력대피', icon: '🏃' }
   ];
 
-  // 현장 소방대원이 입력하는 값을 읽기 전용으로 보여준다 (입력은 소방대원 화면에서만 한다).
-  function casualtySummaryHtml(c) {
+  // 현장 소방대원이 입력하는 값을 읽기 전용 요약 칩으로, 타이틀 옆에 붙여 보여준다.
+  function casualtyChipsHtml(c) {
     c = c || {};
-    var body = '<div class="stat-bar">' + CASUALTY_LABELS.map(function (it) {
-      return stat(it.icon, c[it.key] || 0, it.label);
-    }).join('') + '</div>';
-    return SAFEHOME.detailsPanel('🚑 환자 · 대피 현황 <span style="font-size:11px;color:var(--gray);font-weight:700;">(소방대원 입력)</span>', body, { id: 'casualty', openState: panelOpenState.casualty });
+    return '<div class="casualty-chips" title="환자·대피 현황 (소방대원 입력)">' +
+      CASUALTY_LABELS.map(function (it) {
+        return '<span class="casualty-chip">' + it.icon + ' ' + (c[it.key] || 0) + '</span>';
+      }).join('') +
+    '</div>';
   }
 
   function statBarHtml(c) {
@@ -394,7 +308,7 @@
       checklistRow('신고자 위치 확인', true, ho + '호') +
       checklistRow('연기·화염 유입 여부', !!a.q2, a.q2 || '미확인') +
       checklistRow('현관 대피 가능 여부', !!a.q3, a.q3 || '미확인') +
-      checklistRow('복도·계단 안전 여부', !!a.q4, a.q4 || '미확인') +
+      checklistRow('화점 대비 위치', !!a.q5, a.q5 || '미확인') +
       '<button class="check-row check-row-clickable done" id="sh-toggle-afp-checklist" style="width:100%;border:none;background:none;text-align:left;cursor:pointer;">' +
         '<span class="check-mark">✅</span><span class="check-label">피난시설 존재 여부(AFP)' + (hasOverride ? ' · 이 세대 예외 적용 중' : '') + ' — 클릭해서 상세보기</span>' +
         '<span class="check-value">' + afpCount + '종 설치 ' + (afpChecklistOpen ? '▲' : '▼') + '</span>' +
@@ -404,15 +318,10 @@
     var notes = (unit.notes || []).map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('');
     var vulnerable = unit.hasVulnerable ? '<div class="tag-warn">⚠️ 거동 불편자 있음 (' + unit.occupants + '인 세대)</div>' : '<div class="tag-info">' + unit.occupants + '인 세대</div>';
 
-    var dispatchState = incident.dispatch.dispatched
-      ? '<div class="tag-ok">🚒 출동 지령 완료 (' + SAFEHOME.fmtTime(incident.dispatch.dispatchedAt) + ')</div>'
-      : '<button class="utility-btn" id="sh-dispatch-btn">🚒 출동 지령 내리기</button>';
-
     return '<h3 class="panel-title">🧾 ' + ho + '호 · 상황관리 체크리스트</h3>' +
       vulnerable +
       checklist +
-      (res ? '<div class="action-card ' + res.cls + '" style="margin-top:12px;"><h3>' + res.icon + ' 판정 결과: ' + esc(res.title) + '</h3><ul>' + notes + '</ul></div>' : '<div class="empty-note">아직 대피 판정 전입니다.</div>') +
-      '<div style="margin-top:12px;">' + dispatchState + '</div>';
+      (res ? '<div class="action-card ' + res.cls + '" style="margin-top:12px;"><h3>' + res.icon + ' 판정 결과: ' + esc(res.title) + '</h3><ul>' + notes + '</ul></div>' : '<div class="empty-note">아직 대피 판정 전입니다.</div>');
   }
 
   function afpOverrideToggleHtml(hasOverride) {
@@ -437,7 +346,7 @@
       '<button class="utility-btn" style="width:100%;margin-top:8px;" id="sh-save-unit-afp" data-unit-ho="' + esc(unit.ho) + '">이 세대 예외 저장</button>';
   }
 
-  function bindEvents(pending) {
+  function bindEvents() {
     SAFEHOME.bindPanelToggles(root, panelOpenState);
     root.querySelectorAll('[data-select-ho]').forEach(function (el) {
       el.onclick = function () {
@@ -466,31 +375,9 @@
       el.onclick = function () {
         SAFEHOME.store.setActiveIncident(el.getAttribute('data-select-incident'));
         selectedHo = null;
-        confirmMode = null;
         render();
       };
     });
-    var addIncidentBtn = document.getElementById('sh-add-incident');
-    if (addIncidentBtn) addIncidentBtn.onclick = function () {
-      confirmBuildingId = ''; confirmHo = '';
-      confirmMode = 'new';
-      render();
-    };
-    var cancelBtn = document.getElementById('sh-cancel-confirm');
-    if (cancelBtn) cancelBtn.onclick = function () { confirmMode = null; render(); };
-    var closeIncidentBtn = document.getElementById('sh-close-incident');
-    if (closeIncidentBtn) closeIncidentBtn.onclick = function () {
-      if (confirm('이 사건을 종료할까요? 세대 현황판에서 제외되고 조치 이력에만 남습니다.')) {
-        SAFEHOME.store.closeActiveIncident();
-        selectedHo = null;
-        SAFEHOME.toast('사건을 종료했습니다.');
-      }
-    };
-    var dispatchBtn = document.getElementById('sh-dispatch-btn');
-    if (dispatchBtn) dispatchBtn.onclick = function () {
-      SAFEHOME.store.dispatch();
-      SAFEHOME.toast('출동 지령이 현장 소방대원 화면으로 전달되었습니다.');
-    };
     var afpToggle = document.getElementById('sh-toggle-afp-checklist');
     if (afpToggle) afpToggle.onclick = function () { afpChecklistOpen = !afpChecklistOpen; render(); };
     var noteInput = document.getElementById('sh-note-input');
@@ -502,83 +389,6 @@
       SAFEHOME.store.setDispatchNote(text);
       SAFEHOME.toast('메모가 현장 소방대원 화면에 전달되었습니다.');
     };
-    var copyLinkBtn = document.getElementById('sh-copy-link');
-    if (copyLinkBtn) copyLinkBtn.onclick = function () {
-      var input = document.getElementById('sh-resident-link');
-      var text = input.value;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function () { SAFEHOME.toast('링크가 복사되었습니다.'); })
-          .catch(function () { input.select(); SAFEHOME.toast('복사 실패 — 직접 선택해 복사해주세요.'); });
-      } else {
-        input.select();
-      }
-    };
-    var copyFfLinkBtn = document.getElementById('sh-copy-ff-link');
-    if (copyFfLinkBtn) copyFfLinkBtn.onclick = function () {
-      var input = document.getElementById('sh-firefighter-link');
-      var text = input.value;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function () { SAFEHOME.toast('소방대원 링크가 복사되었습니다.'); })
-          .catch(function () { input.select(); SAFEHOME.toast('복사 실패 — 직접 선택해 복사해주세요.'); });
-      } else {
-        input.select();
-      }
-    };
-    var regenLinksBtn = document.getElementById('sh-regen-links');
-    if (regenLinksBtn) regenLinksBtn.onclick = function () {
-      var active = SAFEHOME.store.getActiveIncident();
-      if (!active) return;
-      SAFEHOME.store.regenerateIncidentLinks(active.id);
-      SAFEHOME.toast('두 링크의 유효시간이 지금부터 다시 ' + SAFEHOME.store.getLinkTtlHours() + '시간으로 연장되었습니다.');
-    };
-    var saveTtlBtn = document.getElementById('sh-save-ttl');
-    if (saveTtlBtn) saveTtlBtn.onclick = function () {
-      var hours = document.getElementById('sh-link-ttl').value;
-      SAFEHOME.store.setLinkTtlHours(hours);
-      SAFEHOME.toast('기본 유효시간이 ' + SAFEHOME.store.getLinkTtlHours() + '시간으로 저장되었습니다. (기존 발급 링크에는 소급 적용되지 않음)');
-    };
-    root.querySelectorAll('[data-resolve-correction]').forEach(function (el) {
-      el.onclick = function () {
-        SAFEHOME.store.resolveCorrectionRequest(el.getAttribute('data-resolve-correction'));
-        SAFEHOME.toast('수정 요청을 처리 완료로 표시했습니다.');
-      };
-    });
-    var reopenBtn = document.getElementById('sh-reopen-confirm');
-    if (reopenBtn) reopenBtn.onclick = function () {
-      var inc = SAFEHOME.store.getActiveIncident();
-      confirmBuildingId = inc ? inc.buildingId || '' : '';
-      confirmHo = inc ? inc.officialHo || '' : '';
-      confirmMode = 'edit';
-      render();
-    };
-    var reportPicker = document.getElementById('sh-confirm-report');
-    if (reportPicker) reportPicker.onchange = function () {
-      var key = reportPicker.value;
-      var r = key ? SAFEHOME.store.getReport(key) : null;
-      if (r) {
-        var b = SAFEHOME.findBuildingByAddress(r.apt, r.dong);
-        confirmBuildingId = b ? b.id : '';
-        confirmHo = r.ho || '';
-      } else {
-        confirmBuildingId = ''; confirmHo = '';
-      }
-      render();
-    };
-    var confirmBtn = document.getElementById('sh-confirm-btn');
-    if (confirmBtn) confirmBtn.onclick = function () {
-      var buildingSel = document.getElementById('sh-confirm-building').value;
-      var hoVal = document.getElementById('sh-confirm-ho').value.trim();
-      if (!buildingSel) { SAFEHOME.toast('등록 건물을 선택해주세요.'); return; }
-      confirmMode = null; // store.setIncidentBuilding()이 동기적으로 render()를 호출하므로 먼저 닫아둔다.
-      SAFEHOME.store.setIncidentBuilding(buildingSel, hoVal || null);
-      var b = SAFEHOME.BUILDINGS[buildingSel];
-      SAFEHOME.toast(b.apt + ' ' + b.dong + '동으로 사건 위치가 확정되었습니다.');
-    };
-    // select/input 값 변경 시 화면 전체를 다시 그리지 않고 로컬 상태만 갱신(포커스 유지)
-    var buildingSelectEl = document.getElementById('sh-confirm-building');
-    if (buildingSelectEl) buildingSelectEl.onchange = function () { confirmBuildingId = buildingSelectEl.value; };
-    var hoInputEl = document.getElementById('sh-confirm-ho');
-    if (hoInputEl) hoInputEl.oninput = function () { confirmHo = hoInputEl.value; };
   }
 
   SAFEHOME.Situation = { mount: mount, unmount: unmount };

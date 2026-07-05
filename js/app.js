@@ -12,22 +12,43 @@
   var ROLE_ACCESS = {
     resident: ['resident'],
     situation: ['situation', 'firefighter'],
-    firefighter: ['firefighter']
+    firefighter: ['firefighter'],
+    admin: ['admin'],
+    facility: ['facility']
   };
   var allowedRoles = ['resident'];
 
   var MODULES = {
     resident: { mount: function (el) { SAFEHOME.Resident.mount(el); }, unmount: function () {} },
     situation: { mount: function (el) { SAFEHOME.Situation.mount(el); }, unmount: function () { SAFEHOME.Situation.unmount(); } },
-    firefighter: { mount: function (el) { SAFEHOME.Firefighter.mount(el); }, unmount: function () { SAFEHOME.Firefighter.unmount(); } }
+    firefighter: { mount: function (el) { SAFEHOME.Firefighter.mount(el); }, unmount: function () { SAFEHOME.Firefighter.unmount(); } },
+    admin: { mount: function (el) { SAFEHOME.Admin.mount(el); }, unmount: function () { SAFEHOME.Admin.unmount(); } },
+    facility: { mount: function (el) { SAFEHOME.FacilityEdit.mount(el); }, unmount: function () { SAFEHOME.FacilityEdit.unmount(); } }
   };
 
   function parseUrlParams() {
     var params = new URLSearchParams(location.search);
     return {
       role: params.get('role'), apt: params.get('apt'), dong: params.get('dong'),
-      incident: params.get('incident'), exp: params.get('exp')
+      incident: params.get('incident'), building: params.get('building')
     };
+  }
+
+  // 보안: 링크 자체에 만료시각을 박아두지 않고, 그 링크가 가리키는 사건의 "현재" 유효시간을
+  // 매번 store에서 조회해 판단한다. 그래야 관리자가 "유효시간 연장"을 누르면 이미 배포된
+  // 같은 링크가 재발급 없이도 곧바로 다시 유효해진다.
+  function isLinkExpired(urlParams) {
+    var now = Date.now();
+    if (urlParams.role === 'firefighter' && urlParams.incident) {
+      var inc = SAFEHOME.store.getIncident(urlParams.incident);
+      return !!inc && now > inc.firefighterLinkExp;
+    }
+    if (urlParams.role === 'resident' && urlParams.apt && urlParams.dong) {
+      var building = SAFEHOME.findBuildingByAddress(urlParams.apt, urlParams.dong);
+      var inc2 = building ? SAFEHOME.store.findOpenIncidentForBuilding(building.id) : null;
+      return !!inc2 && now > inc2.residentLinkExp;
+    }
+    return false;
   }
 
   function init() {
@@ -41,19 +62,19 @@
 
     var urlParams = parseUrlParams();
 
-    // 보안: 상황실이 발급한 링크(?exp=만료시각)가 만료됐으면 화면을 아예 열어주지 않는다.
-    if (urlParams.exp && Date.now() > parseInt(urlParams.exp, 10)) {
+    if (isLinkExpired(urlParams)) {
       showExpiredScreen();
       return;
     }
 
     allowedRoles = ROLE_ACCESS[urlParams.role] || ['resident'];
     if (urlParams.apt || urlParams.dong) {
-      // 상황실이 발급한 링크로 들어온 경우 — 아파트/동을 잠그고 세대(호)만 입력받는다.
+      // 관리자가 발급한 링크로 들어온 경우 — 아파트/동을 잠그고 세대(호)만 입력받는다.
       SAFEHOME.urlLockedAddress = { apt: urlParams.apt || '', dong: urlParams.dong || '' };
       SAFEHOME.store.setLocation({ apt: urlParams.apt || '', dong: urlParams.dong || '', ho: SAFEHOME.store.getState().location.ho });
     }
     if (urlParams.incident) SAFEHOME.urlIncidentId = urlParams.incident;
+    if (urlParams.building) SAFEHOME.urlBuildingId = urlParams.building;
 
     roleTabs.querySelectorAll('.role-tab').forEach(function (btn) {
       var r = btn.getAttribute('data-role');
@@ -127,7 +148,7 @@
       // 진행률은 그대로 유지 — 패닉 안내는 별도 단계로 치지 않는다.
     } else {
       progressWrap.style.display = 'block';
-      progressFill.style.width = (((step - 1) / 5) * 100) + '%';
+      progressFill.style.width = (((step - 1) / SAFEHOME.QUESTION_ORDER.length) * 100) + '%';
     }
     updateChrome();
   }
@@ -181,7 +202,7 @@
       '<div class="start-screen">' +
         '<div class="start-emoji">⏱</div>' +
         '<div class="start-title">이 링크는 만료되었습니다</div>' +
-        '<div class="start-sub">보안을 위해 119 상황실이 발급한 링크는 일정 시간이 지나면 자동으로 접속이 차단됩니다.<br>119 상황실에 새 링크 발급을 요청해주세요.</div>' +
+        '<div class="start-sub">보안을 위해 관리자가 발급한 링크는 일정 시간이 지나면 자동으로 접속이 차단됩니다.<br>관리자에게 유효시간 연장 또는 새 링크 발급을 요청해주세요.</div>' +
         '<a href="tel:119" class="start-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;">📞 119로 전화하기</a>' +
       '</div>';
   }

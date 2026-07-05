@@ -2,3 +2,7 @@
 Thumbs.db
 *.log
 .vscode/
+
+# 대구 아파트 정보 가져오기 스크립트 관련 — 서비스키/결과물이 실수로라도 공개 저장소에 커밋되지 않도록
+tools/daegu-import/.env
+tools/daegu-import/*.csv

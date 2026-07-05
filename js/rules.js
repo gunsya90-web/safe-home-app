@@ -4,34 +4,30 @@
 (function (SAFEHOME) {
   'use strict';
 
-  var DOOR_BLOCKED = ['문밖화염있음', '문손잡이뜨겁다', '문을열수없다'];
+  // 1차 개선으로 복도/계단 안전여부(Q4)가 없어져, 현관 밖 상태(Q3)만으로 대피 경로 안전성을 판단한다.
+  var DOOR_BLOCKED = ['문밖화염있음'];
   var DOOR_CAUTION = ['문밖연기있음', '모르겠다'];
 
   /**
-   * @param {object} a 질문 답변 { q1..q5 }
+   * @param {object} a 질문 답변 { q1, q2, q3, q5 }
    * @param {object} afp AFP-Core 정보 (true/false/null)
    * @returns {{key:string, urgency:string, notes:string[]}}
    */
   function decide(a, afp) {
     afp = afp || {};
     var notes = [];
-    var q2 = a.q2, q3 = a.q3, q4 = a.q4, q5 = a.q5;
+    var q2 = a.q2, q3 = a.q3, q5 = a.q5;
 
-    var roomFlame = q2 === '화염보임';
-    var roomHeavySmoke = q2 === '많음';
+    var roomSevere = q2 === '많음또는화염'; // 연기 많음 · 화염 보임 통합 선택지
     var roomUncertain = q2 === '모르겠음';
     var doorOk = q3 === '가능하다';
     var doorBlocked = DOOR_BLOCKED.indexOf(q3) !== -1;
     var doorCaution = DOOR_CAUTION.indexOf(q3) !== -1;
-    var hallwayClear = q4 === '없다';
-    var hallwayHazard = q4 === '있다';
-    var hallwayCaution = q4 === '잘모르겠다';
 
     // 상황실 정렬용 긴급도
     var urgency = 'low';
-    if (roomFlame || doorBlocked) urgency = 'critical';
-    else if (roomHeavySmoke || hallwayHazard) urgency = 'high';
-    else if (roomUncertain || doorCaution || hallwayCaution) urgency = 'medium';
+    if (roomSevere || doorBlocked) urgency = 'critical';
+    else if (roomUncertain || doorCaution) urgency = 'medium';
 
     function escapeAlternative(reason) {
       notes.push(reason);
@@ -51,29 +47,24 @@
       return 'F';
     }
 
-    // Tier 1 — 실내 화염 또는 현관 진입 자체가 불가능한 최우선 위험 상황
-    if (roomFlame || doorBlocked) {
-      var key1 = escapeAlternative('실내 화염 또는 현관 진입 불가 상태');
+    // Tier 1 — 실내 연기가 심하거나(화염 포함) 현관 진입 자체가 불가능한 최우선 위험 상황
+    if (roomSevere || doorBlocked) {
+      var key1 = escapeAlternative('실내 연기 심함(화염 포함) 또는 현관 진입 불가 상태');
       return { key: key1, urgency: 'critical', notes: notes };
     }
 
-    // Tier 2 — 현관 대피가 가능하고 실내도 비교적 안전한 경우
-    if (doorOk && !roomHeavySmoke && !roomUncertain) {
-      if (hallwayClear) {
-        notes.push('현관 대피 가능 + 복도·계단 안전 → 즉시 계단 대피');
-        return { key: 'A', urgency: 'low', notes: notes };
-      }
-      // 복도·계단에 위험 요소가 있는 경우: 화재가 아래층이고 옥상 대피가 가능하면 옥상도 검토
-      if ((hallwayHazard || hallwayCaution) && q5 === '아래' && afp.roofEvacuation) {
-        notes.push('복도·계단 위험 + 화재가 아래층 + 옥상 대피 가능(AFP) → 옥상 대피 검토');
-        return { key: 'G', urgency: urgency, notes: notes };
-      }
-      var key2 = escapeAlternative('복도·계단에 연기·화염 확인됨');
-      return { key: key2, urgency: urgency, notes: notes };
+    // Tier 2 — 현관 밖으로 나갈 수 있고 실내도 비교적 안전한 경우 → 즉시 계단 대피
+    if (doorOk) {
+      notes.push('현관 대피 가능 + 실내 연기 없거나 적음 → 즉시 계단 대피');
+      return { key: 'A', urgency: 'low', notes: notes };
     }
 
-    // Tier 3 — 실내 연기가 많거나 판단이 애매한 경우: 보수적으로 대체 시설 우선
-    var key3 = escapeAlternative('실내 연기 심함 또는 상황 판단 불확실');
+    // Tier 3 — 현관 밖 상황이 불확실한 경우: 화재가 아래층이고 옥상 대피가 가능하면 옥상도 검토
+    if (q5 === '아래' && afp.roofEvacuation) {
+      notes.push('현관 밖 상황 불확실 + 화재가 아래층 + 옥상 대피 가능(AFP) → 옥상 대피 검토');
+      return { key: 'G', urgency: urgency, notes: notes };
+    }
+    var key3 = escapeAlternative('현관 밖 상황 불확실(연기 또는 미확인)');
     return { key: key3, urgency: urgency, notes: notes };
   }
   SAFEHOME.decide = decide;
@@ -247,7 +238,6 @@
       '화재위치: ' + (answers.q1 || '-'),
       '집 안 연기/화염: ' + (answers.q2 || '-'),
       '현관 대피: ' + (answers.q3 || '-'),
-      '복도/계단: ' + (answers.q4 || '-'),
       '화점 대비 위치: ' + (answers.q5 || '-'),
       '구조 또는 안내가 필요합니다.'
     ].join('\n');

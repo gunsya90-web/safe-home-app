@@ -7,6 +7,8 @@
   // ---------------------------------------------------------------------
   // 1. 대피 질문 (흐름도 1~5단계)
   // ---------------------------------------------------------------------
+  // 1차 개선 반영: Q1에서 지하주차장·공용부 제거, Q2 연기많음/화염보임 통합,
+  // Q3에서 문손잡이뜨겁다·문을열수없다 제거, Q4(복도/계단 안전여부) 전체 삭제.
   SAFEHOME.QUESTIONS = {
     q1: {
       id: 'q1',
@@ -18,7 +20,6 @@
         { value: '같은층', emoji: '↔️', label: '같은 층 다른 세대·복도', desc: '같은 층 이웃 세대 또는 복도에서 발생' },
         { value: '아래층', emoji: '⬇️', label: '아래층', desc: '우리 집보다 아래층에서 발생' },
         { value: '위층', emoji: '⬆️', label: '위층', desc: '우리 집보다 위층에서 발생' },
-        { value: '공용부', emoji: '🅿️', label: '지하주차장 · 공용부', desc: '지하주차장, 기계실 등 공용 공간에서 발생' },
         { value: '모름', emoji: '❓', label: '모름', desc: '정확한 발화 위치를 알 수 없음' }
       ]
     },
@@ -30,8 +31,7 @@
       options: [
         { value: '없음', emoji: '✅', label: '연기 없음', desc: '아직 집 안은 안전한 상태' },
         { value: '조금있음', emoji: '🌫️', label: '연기 조금 있음', desc: '옅은 연기 냄새 또는 흐릿한 연기' },
-        { value: '많음', emoji: '💨', label: '연기 많음', desc: '시야 확보가 어려울 정도의 연기' },
-        { value: '화염보임', emoji: '🔥', label: '화염 보임', desc: '집 안에서 불꽃이 직접 보임', danger: true },
+        { value: '많음또는화염', emoji: '🔥', label: '연기 많음 · 화염 보임', desc: '시야 확보가 어렵거나 불꽃이 직접 보임', danger: true },
         { value: '모르겠음', emoji: '❔', label: '모르겠음', desc: '정확한 상태를 판단하기 어려움' }
       ]
     },
@@ -44,25 +44,12 @@
         { value: '가능하다', emoji: '🚪', label: '가능하다', desc: '복도에 연기·화염이 없거나 적음' },
         { value: '문밖연기있음', emoji: '🌫️', label: '문 밖에 연기 있음', desc: '문을 열면 연기가 들어옴' },
         { value: '문밖화염있음', emoji: '🔥', label: '문 밖에 화염 있음', desc: '문 밖에서 불꽃이 보임', danger: true },
-        { value: '문손잡이뜨겁다', emoji: '🌡️', label: '문 · 손잡이가 뜨겁다', desc: '문 반대편에 화염이 있을 가능성', danger: true },
-        { value: '문을열수없다', emoji: '⛔', label: '문을 열 수 없다', desc: '변형되었거나 걸려서 열리지 않음', danger: true },
         { value: '모르겠다', emoji: '❔', label: '모르겠다', desc: '아직 확인하지 못함' }
-      ]
-    },
-    q4: {
-      id: 'q4',
-      step: '4단계 · 복도/계단 안전 여부',
-      title: '계단이나 복도에 연기·화염이 있습니까?',
-      sub: '대피 경로의 안전 상태를 다시 한번 확인해주세요.',
-      options: [
-        { value: '없다', emoji: '✅', label: '없다', desc: '계단·복도가 비교적 깨끗함' },
-        { value: '있다', emoji: '🌫️', label: '있다', desc: '연기 또는 화염으로 이동이 위험함', danger: true },
-        { value: '잘모르겠다', emoji: '❔', label: '잘 모르겠다', desc: '아직 확인하지 못함' }
       ]
     },
     q5: {
       id: 'q5',
-      step: '5단계 · 위치 관계 확인',
+      step: '4단계 · 위치 관계 확인',
       title: '신고자는 화점층보다 어디에 위치해 있습니까?',
       sub: '화재 발생 지점을 기준으로 내 위치를 선택해주세요.',
       options: [
@@ -73,7 +60,7 @@
       ]
     }
   };
-  SAFEHOME.QUESTION_ORDER = ['q1', 'q2', 'q3', 'q4', 'q5'];
+  SAFEHOME.QUESTION_ORDER = ['q1', 'q2', 'q3', 'q5'];
 
   // ---------------------------------------------------------------------
   // 2. AFP-Core 항목 정의 (입주민 · 119가 즉시 쓰는 행동정보)
@@ -98,6 +85,28 @@
     { key: 'waterSprayConnection', label: '연결살수설비', icon: '🚿', yes: '설치', no: '미설치' }
   ];
 
+  // 실제 데이터(대구 등 지역 아파트 일괄 등록)를 들여올 때, 소방시설현황·평면도는 아직 없으므로
+  // 각 필드를 "확인 필요"(null) 상태로 채워둔다. 이후 관리자가 발급하는 소방시설 점검 링크로 채워진다.
+  SAFEHOME.makeUnknownFacility = function (fields) {
+    var obj = {};
+    fields.forEach(function (f) { obj[f.key] = null; });
+    return obj;
+  };
+  SAFEHOME.makeUnknownSearch = function () {
+    return {
+      hoistRoomStructure: '', roofAccessRoute: '', hiddenStairs: '', midFireDoors: '',
+      duplexUnits: [], duplexNote: '등록된 정보 없음 — 현장조사 필요',
+      refugeAreaNote: '등록된 정보 없음', basementNote: '등록된 정보 없음'
+    };
+  };
+
+  // 건물 요약 문구 — 균일 격자(층수×세대/층) 데모 건물과, 실제 호수 목록을 그대로 들여온
+  // 일괄 등록 건물(building.units) 모두를 자연스럽게 표시한다.
+  SAFEHOME.buildingUnitSummary = function (b) {
+    if (b.units && b.units.length) return b.floors + '층 · 총 ' + b.units.length + '세대';
+    return b.floors + '층 · 세대당 ' + b.unitsPerFloor + '호';
+  };
+
   function ynText(v, yes, no) {
     if (v === true) return yes;
     if (v === false) return no;
@@ -108,6 +117,72 @@
     if (v === true) return 'ok';
     if (v === false) return 'no';
     return 'unknown';
+  };
+
+  // 입주민 결과화면의 "시설별 사용법" 카드는 실제 세대별 설치 데이터베이스가 아직 없으므로,
+  // 전 시설이 설치된 것으로 가정한 샘플 값을 쓴다. (대피 판정 자체에는 쓰이지 않음 — 그건 각 건물의 core 값을 그대로 사용)
+  SAFEHOME.SAMPLE_ALL_INSTALLED_AFP = {
+    downwardEvacuationHatch: true, inUnitShelter: true, lightPartition: true,
+    roofEvacuation: true, roofAutoDoor: true, refugeArea: true, airSafetyMat: true
+  };
+
+  // 소방시설별 사용법 — 입주민 결과화면에서 각 시설 카드를 클릭하면 펼쳐진다.
+  SAFEHOME.FACILITY_USAGE = {
+    downwardEvacuationHatch: {
+      title: '⬇️ 하향식 피난구 사용 방법',
+      steps: [
+        { icon: 'step1', desc: '발코니 또는 대피공간 바닥의 하향식 피난구 위치를 확인하세요' },
+        { icon: 'step2', desc: '덮개를 열고 사다리(또는 피난 장치)를 아래 세대로 내려 안전하게 이동하세요' },
+        { icon: 'sos', desc: '아래 세대로 이동한 뒤 119에 이동 위치를 다시 알리세요' }
+      ]
+    },
+    inUnitShelter: {
+      title: '🛡️ 대피공간 이용 방법',
+      steps: [
+        { icon: 'shelter', desc: '발코니 또는 별도 구획된 대피공간 문 위치를 확인하세요 (통상 내화구조로 별도 표시됨)' },
+        { icon: 'step1', desc: '대피공간 안으로 들어가 문을 완전히 닫으세요' },
+        { icon: 'sos', desc: '환기구 또는 창 쪽에서 119에 현재 위치를 다시 알리세요' }
+      ]
+    },
+    lightPartition: {
+      title: '🚪 경량칸막이 대피 방법',
+      steps: [
+        { icon: 'partition', desc: '발코니의 얇은 석고보드 칸막이 위치를 확인하세요 (보통 발코니 끝쪽에 있습니다)' },
+        { icon: 'step1', desc: '발이나 둔탁한 물건으로 칸막이를 강하게 쳐서 구멍을 내세요' },
+        { icon: 'step2', desc: '옆 세대 발코니로 이동한 후 그 집 현관을 통해 계단으로 대피하세요' }
+      ]
+    },
+    roofEvacuation: {
+      title: '🏢 옥상 대피 시 유의사항',
+      steps: [
+        { icon: 'roof', desc: '옥상 출입문이 평소 잠겨있지 않은지 확인하고, 옥상으로 이동 시에도 자세를 낮추세요' },
+        { icon: 'step1', desc: '옥상에 도착하면 출입문을 닫아 연기 유입을 막고, 바람 방향의 반대편에서 대기하세요' },
+        { icon: 'sos', desc: '밝은 옷가지나 손전등으로 신호를 보내 구조대가 위치를 확인할 수 있도록 하세요' }
+      ]
+    },
+    roofAutoDoor: {
+      title: '⚙️ 옥상 차동개폐장치 안내',
+      steps: [
+        { icon: 'roof', desc: '화재로 인한 열을 감지하면 옥상문이 자동으로 열리는 장치입니다 — 별도 조작이 필요 없습니다' },
+        { icon: 'step1', desc: '옥상에 도착했는데 문이 닫혀 있다면 손잡이를 밀어 여세요 (자동개방 실패 대비)' }
+      ]
+    },
+    refugeArea: {
+      title: '🧭 피난안전구역 이용 방법',
+      steps: [
+        { icon: 'step1', desc: '해당 층의 피난안전구역(방화구획된 대피 전용 공간)으로 이동하세요' },
+        { icon: 'shelter', desc: '진입 후 문을 닫고, 소방대원의 안내가 있을 때까지 대기하세요' },
+        { icon: 'sos', desc: '119에 피난안전구역으로 이동했음을 알리세요' }
+      ]
+    },
+    airSafetyMat: {
+      title: '🛟 공기안전매트 안내',
+      steps: [
+        { icon: 'sos', desc: '공기안전매트는 소방대원이 건물 외부에 설치하는 장비로, 입주민이 직접 조작하지 않습니다' },
+        { icon: 'step1', desc: '창문이나 베란다에서 밝은 천, 손전등으로 신호를 보내 위치를 알리세요' },
+        { icon: 'step2', desc: '매트 설치가 끝나면 소방대원의 안내에 따라 행동하세요 — 안내 없이 임의로 뛰어내리지 마세요' }
+      ]
+    }
   };
 
   // ---------------------------------------------------------------------
@@ -211,25 +286,39 @@
   }
   SAFEHOME.buildUnitId = buildUnitId;
 
+  function makeUnitRecord(ho, floor, unitIndex, fireOriginHo) {
+    return {
+      ho: ho,
+      floor: floor,
+      unitIndex: unitIndex,
+      isFireOrigin: ho === fireOriginHo,
+      status: ho === fireOriginHo ? 'danger' : 'unresponded',
+      resultKey: null,
+      answers: null,
+      urgency: ho === fireOriginHo ? 'critical' : null,
+      notes: [],
+      updatedAt: null,
+      occupants: (Math.random() > 0.7) ? 2 : 1,
+      hasVulnerable: Math.random() > 0.85 // 고령자/영유아 등 거동취약자 여부(데모용 랜덤)
+    };
+  }
+
   function generateUnits(building, fireOriginHo) {
     var units = {};
+    // 실제 데이터를 일괄 등록한 건물은 층마다 세대수가 균일하지 않으므로, 실제 호수 목록(building.units)이
+    // 있으면 그걸 그대로 쓰고, 없으면(데모 건물) 기존 균일 격자(층수×세대/층) 방식으로 생성한다.
+    if (building.units && building.units.length) {
+      building.units.forEach(function (ho) {
+        var floor = parseInt(ho.length > 2 ? ho.slice(0, -2) : ho, 10) || 0;
+        var unitIndex = parseInt(ho.slice(-2), 10) || 0;
+        units[ho] = makeUnitRecord(ho, floor, unitIndex, fireOriginHo);
+      });
+      return units;
+    }
     for (var f = building.floors; f >= 1; f--) {
       for (var u = 1; u <= building.unitsPerFloor; u++) {
-        var ho = buildUnitId(f, u);
-        units[ho] = {
-          ho: ho,
-          floor: f,
-          unitIndex: u,
-          isFireOrigin: ho === fireOriginHo,
-          status: ho === fireOriginHo ? 'danger' : 'unresponded',
-          resultKey: null,
-          answers: null,
-          urgency: ho === fireOriginHo ? 'critical' : null,
-          notes: [],
-          updatedAt: null,
-          occupants: (Math.random() > 0.7) ? 2 : 1,
-          hasVulnerable: Math.random() > 0.85 // 고령자/영유아 등 거동취약자 여부(데모용 랜덤)
-        };
+        var gridHo = buildUnitId(f, u);
+        units[gridHo] = makeUnitRecord(gridHo, f, u, fireOriginHo);
       }
     }
     return units;
