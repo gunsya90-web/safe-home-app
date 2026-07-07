@@ -277,11 +277,12 @@ def _fetch_units_page(sigungu_code, bdong_code, bun, ji, page_no, plat_gb_cd):
         "numOfRows": str(EXPOS_PAGE_SIZE), "pageNo": str(page_no),
         "sigunguCd": sigungu_code, "bjdongCd": bdong_code,
         "platGbCd": plat_gb_cd,  # 대지구분(0=대지, 1=산) — 건축물대장 계열 API의 필수 파라미터
+        # ji(지번 부번)는 부번이 없는 주소(예: "1401번지"처럼 "-N"이 안 붙는 경우)에도 "0000"으로
+        # 명시적으로 보내야 한다 — 생략하면 API가 아예 안 걸려서 totalCount=0으로 조용히 실패했다.
+        "ji": str(ji).zfill(4) if ji else "0000",
     }
     if bun:
         params["bun"] = str(bun).zfill(4)
-    if ji:
-        params["ji"] = str(ji).zfill(4)
 
     body, err = _call_once_xml(EXPOS_INFO_URL, params, "전유부")
     if body is None:
