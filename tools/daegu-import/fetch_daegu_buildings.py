@@ -337,6 +337,17 @@ def main():
 
     rows = []
     skipped = 0
+    skip_reasons = {}  # 사유별 스킵 개수 — 끝에 요약해서 어디서 가장 많이 새는지 바로 보이게 한다
+    skip_examples = {}  # 사유별로 처음 몇 개 단지명만 예시로 남겨서 원인 파악을 돕는다
+
+    def record_skip(reason, apt_name):
+        nonlocal skipped
+        skipped += 1
+        skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
+        examples = skip_examples.setdefault(reason, [])
+        if len(examples) < 5:
+            examples.append(apt_name)
+
     for sigungu_name, sigungu_code in SIGUNGU_CODES.items():
         complexes = fetch_all_apt_list(sigungu_name, sigungu_code)
         print(f"  → {sigungu_name} 단지 {len(complexes)}개 확인, 주소·세대(호) 조회 시작")
@@ -347,14 +358,15 @@ def main():
             fallback_bjd_code = str(c.get("bjdCode", "")).strip()
             print(f"  [{idx}/{len(complexes)}] {apt_name} 처리 중...")
             if not apt_name or not kapt_code:
-                skipped += 1
+                print(f"    [단지명/단지코드 누락] apt_name={apt_name!r} kapt_code={kapt_code!r}")
+                record_skip("단지명/단지코드 누락", apt_name or "(이름없음)")
                 continue
 
             basis, err = fetch_apt_basis_info(kapt_code)
             time.sleep(REQUEST_INTERVAL_SEC)
             if not basis:
                 print(f"    [기본정보 조회 실패] {apt_name}: {err}")
-                skipped += 1
+                record_skip("기본정보 조회 실패", apt_name)
                 continue
 
             bjd_col = find_key(basis, ["bjdCode", "법정동코드"])
@@ -362,27 +374,30 @@ def main():
             bjd_code = str(basis.get(bjd_col, "") if bjd_col else fallback_bjd_code).strip()
             addr_text = basis.get(addr_col, "") if addr_col else ""
             if not bjd_code or len(bjd_code) < 10:
-                skipped += 1
+                print(f"    [법정동코드 없음/형식 이상] {apt_name}: bjd_code={bjd_code!r} (기본정보 필드: {list(basis.keys())})")
+                record_skip("법정동코드 없음/형식 이상", apt_name)
                 continue
 
             sgg_code = bjd_code[:5]
             bdong_code = bjd_code[5:]
             bun, ji = guess_bun_ji(addr_text)
             if not bun:
-                skipped += 1
+                print(f"    [번지 추출 실패] {apt_name}: addr_text={addr_text!r}")
+                record_skip("번지 추출 실패", apt_name)
                 continue
 
             units = fetch_units(sgg_code, bdong_code, bun, ji)
             time.sleep(REQUEST_INTERVAL_SEC)
             if not units:
-                skipped += 1
+                print(f"    [전유부 결과 없음] {apt_name}: sgg={sgg_code} bdong={bdong_code} bun={bun} ji={ji}")
+                record_skip("전유부 결과 없음", apt_name)
                 continue
 
             dong_key = find_key(units[0], ["동명칭", "dongNm"])
             ho_key = find_key(units[0], ["호명칭", "hoNm"])
             if not dong_key or not ho_key:
                 print(f"    전유부 필드를 찾지 못했습니다({apt_name}). 실제 필드 목록: {list(units[0].keys())}")
-                skipped += 1
+                record_skip("전유부 필드 인식 실패", apt_name)
                 continue
 
             found = 0
@@ -395,7 +410,12 @@ def main():
             if found:
                 print(f"    ✓ {apt_name}: {found}세대")
 
-    print(f"\n건너뛴 단지 {skipped}개 (주소를 못 구했거나 전유부 조회 실패)")
+    print(f"\n건너뛴 단지 {skipped}개")
+    if skip_reasons:
+        print("사유별 내역:")
+        for reason, count in sorted(skip_reasons.items(), key=lambda kv: -kv[1]):
+            examples = ", ".join(skip_examples.get(reason, []))
+            print(f"  - {reason}: {count}개 (예: {examples})")
 
     if not rows:
         sys.exit("가져온 데이터가 없습니다. 위 로그(오류 메시지, 실패 사유)를 확인해주세요.")
