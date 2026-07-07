@@ -258,18 +258,25 @@
   }
   SAFEHOME.normalizeAddr = normalizeAddr;
 
+  // 동 값 비교 전용 정규화 — "101"과 "101동"처럼 접미사 "동"이 있고 없고의 차이로
+  // 입주민이 직접 입력한 동이 등록된 건물과 매칭 실패하는 걸 막는다.
+  function normalizeDong(s) {
+    return normalizeAddr(s).replace(/동$/, '');
+  }
+  SAFEHOME.normalizeDong = normalizeDong;
+
   SAFEHOME.addrEquals = function (apt1, dong1, apt2, dong2) {
-    return normalizeAddr(apt1) === normalizeAddr(apt2) && normalizeAddr(dong1) === normalizeAddr(dong2);
+    return normalizeAddr(apt1) === normalizeAddr(apt2) && normalizeDong(dong1) === normalizeDong(dong2);
   };
 
   // 입주민이 입력한 아파트명/동으로 등록된 건물을 찾는다. 실제 서비스라면 K-apt 단지코드 조회로 대체된다.
   SAFEHOME.findBuildingByAddress = function (apt, dong) {
-    var na = normalizeAddr(apt), nd = normalizeAddr(dong);
+    var na = normalizeAddr(apt), nd = normalizeDong(dong);
     if (!na && !nd) return null;
     var ids = Object.keys(SAFEHOME.BUILDINGS);
     for (var i = 0; i < ids.length; i++) {
       var b = SAFEHOME.BUILDINGS[ids[i]];
-      if (normalizeAddr(b.apt) === na && normalizeAddr(b.dong) === nd) return b;
+      if (normalizeAddr(b.apt) === na && normalizeDong(b.dong) === nd) return b;
     }
     if (!nd) {
       for (var j = 0; j < ids.length; j++) {

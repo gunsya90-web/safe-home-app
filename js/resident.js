@@ -41,32 +41,37 @@
     return renderQuestion(step);
   }
 
-  // 아파트명을 입력하면 등록된 건물 중 일치하는 동을 클릭 가능한 추천 목록으로 보여준다.
+  // 아파트명을 입력하면 등록된 "단지명"만 클릭 가능한 추천 목록으로 보여준다(동·호는 옆 칸에 직접
+  // 입력하는 게 원래 설계였다 — 단지 하나에 동이 여러 개인 경우가 많아 특정 동만 추천에 뜨면 안 된다).
   // 브라우저 네이티브 datalist는 한글 입력 필터링이 잘 안 돼(거의 전체 목록이 뜸) 직접 구현했다.
   // 목록에서 골라도 되고, 등록되지 않은 아파트라면 그냥 직접 입력해도 신고는 그대로 저장된다(강제 아님).
+  function matchingAptNames(query) {
+    var names = [];
+    SAFEHOME.matchingBuildingIds(query).forEach(function (id) {
+      var apt = SAFEHOME.BUILDINGS[id].apt;
+      if (names.indexOf(apt) === -1) names.push(apt);
+    });
+    return names;
+  }
   function aptSuggestionsHtml(query) {
     if (!query) return '';
-    var ids = SAFEHOME.matchingBuildingIds(query).slice(0, 8);
-    if (!ids.length) return '<div class="afp-note" style="margin-top:6px;">일치하는 등록 아파트가 없습니다. 그대로 직접 입력해 저장할 수 있습니다.</div>';
-    return '<div class="apt-suggest-list">' + ids.map(function (id) {
-      var b = SAFEHOME.BUILDINGS[id];
-      return '<button type="button" class="apt-suggest-item" data-suggest-id="' + id + '">' + esc(b.apt) + ' ' + esc(b.dong) + '동</button>';
+    var names = matchingAptNames(query).slice(0, 8);
+    if (!names.length) return '<div class="afp-note" style="margin-top:6px;">일치하는 등록 아파트가 없습니다. 그대로 직접 입력해 저장할 수 있습니다.</div>';
+    return '<div class="apt-suggest-list">' + names.map(function (n) {
+      return '<button type="button" class="apt-suggest-item" data-suggest-name="' + esc(n) + '">' + esc(n) + '</button>';
     }).join('') + '</div>';
   }
-  // 추천 목록에서 하나를 고르면 검색으로 애매하게 남기지 않고 아파트명·동을 정확히 채워 넣는다
-  // (직접 입력했을 때 발생하던 "동" 표기 불일치 — 예: "101" vs "101동" — 문제를 원천적으로 없앤다).
+  // 추천 목록에서 단지명을 고르면 아파트명 칸만 정확히 채워지고, 동·호는 그대로 직접 입력한다.
   function bindAptSuggestionClicks() {
     var box = document.getElementById('sh-apt-suggestions');
     if (!box) return;
     box.querySelectorAll('.apt-suggest-item').forEach(function (btn) {
       btn.onclick = function () {
-        var b = SAFEHOME.BUILDINGS[btn.getAttribute('data-suggest-id')];
-        if (!b) return;
-        startAptQuery = b.apt;
-        document.getElementById('sh-apt').value = b.apt;
-        document.getElementById('sh-dong').value = b.dong;
+        var name = btn.getAttribute('data-suggest-name');
+        startAptQuery = name;
+        document.getElementById('sh-apt').value = name;
         box.innerHTML = '';
-        document.getElementById('sh-ho').focus();
+        document.getElementById('sh-dong').focus();
       };
     });
   }

@@ -196,7 +196,7 @@
       '<div class="queue-list">' + pending.map(function (r) {
         return '<div class="queue-item" style="cursor:default;">' +
           '<span class="queue-urgency">' + (URGENCY_LABEL[r.urgency] || '') + '</span>' +
-          '<span class="queue-ho">' + esc(r.apt || '위치 미상') + ' ' + esc(r.dong ? r.dong + '동' : '') + ' ' + esc(r.ho ? r.ho + '호' : '') + '</span>' +
+          '<span class="queue-ho">' + esc(r.apt || '위치 미상') + ' ' + esc(r.dong ? String(r.dong).replace(/동$/, '') + '동' : '') + ' ' + esc(r.ho ? String(r.ho).replace(/호$/, '') + '호' : '') + '</span>' +
           '<span class="queue-status">' + (r.auto ? '자동감지 신호' : '입주민 신고') + '</span>' +
           '<span class="queue-result">' + (r.notes && r.notes[0] ? esc(r.notes[0]) : '') + '</span>' +
           '<span class="queue-time">' + SAFEHOME.fmtTime(r.updatedAt) + '</span>' +

@@ -218,8 +218,8 @@
     if (!loc) return '위치 미입력';
     var parts = [];
     if (loc.apt) parts.push(loc.apt);
-    if (loc.dong) parts.push(loc.dong + '동');
-    if (loc.ho) parts.push(loc.ho + '호');
+    if (loc.dong) parts.push(String(loc.dong).replace(/동$/, '') + '동');
+    if (loc.ho) parts.push(String(loc.ho).replace(/호$/, '') + '호');
     return parts.length ? parts.join(' ') : '위치 미입력';
   }
   SAFEHOME.locText = locText;
