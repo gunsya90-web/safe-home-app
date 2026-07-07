@@ -67,23 +67,24 @@ except ImportError:
 SERVICE_KEY = os.environ.get("DAEGU_API_SERVICE_KEY", "")
 
 # 대구 8개 구/군의 법정동코드 앞 5자리(시군구코드) — 통계청 표준 법정동코드 기준.
-# 필요한 구/군만 남겨도 됩니다.
+# 지금은 서구만 조회하도록 좁혀뒀습니다. 다른 구/군도 다시 받고 싶으면 아래 주석 처리된
+# 줄들을 되살리면 됩니다.
 SIGUNGU_CODES = {
-    "중구": "27110",
-    "동구": "27140",
     "서구": "27170",
-    "남구": "27200",
-    "북구": "27230",
-    "수성구": "27260",
-    "달서구": "27290",
-    "달성군": "27710",
+    # "중구": "27110",
+    # "동구": "27140",
+    # "남구": "27200",
+    # "북구": "27230",
+    # "수성구": "27260",
+    # "달서구": "27290",
+    # "달성군": "27710",
 }
 
 APT_LIST_URL = "http://apis.data.go.kr/1613000/AptListService3/getSigunguAptList3"
 APT_BASIS_URL = "http://apis.data.go.kr/1613000/AptBasisInfoServiceV4/getAphusBassInfoV4"
 EXPOS_INFO_URL = "http://apis.data.go.kr/1613000/BldRgstHubService/getBrExposInfo"  # 전유부(동/호명칭) 조회
 REQUEST_TIMEOUT_SEC = 15  # 이 시간 안에 응답이 없으면 포기하고 다음으로 넘어간다(무한 대기 방지)
-OUTPUT_CSV = "daegu_buildings.csv"
+OUTPUT_CSV = "daegu_seogu_buildings.csv"  # 서구만 받으므로 기존 daegu_buildings.csv(대구 전체)는 그대로 남겨둔다
 REQUEST_INTERVAL_SEC = 1.0  # 공공데이터포털 초당 호출 제한 방지용 최소 대기시간
 RETRY_BACKOFF_SEC = [2, 5, 10]  # 요청이 실패하면(대부분 순간적인 호출 제한) 이만큼 기다렸다가 재시도
 PAGE_SIZE = 100

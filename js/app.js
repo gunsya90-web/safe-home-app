@@ -189,7 +189,7 @@
     var appEl = document.getElementById('app');
     var btn = document.getElementById('themeToggleBtn');
     appEl.classList.toggle('dark', dark);
-    if (btn) btn.textContent = dark ? '☀️' : '🌙';
+    if (btn) btn.innerHTML = dark ? SAFEHOME.icon2('sun') : SAFEHOME.icon2('moon');
   }
 
   function showExpiredScreen() {
@@ -200,10 +200,10 @@
     document.getElementById('topbarLoc').textContent = '';
     document.getElementById('view-root').innerHTML =
       '<div class="start-screen">' +
-        '<div class="start-emoji">⏱</div>' +
+        '<div class="start-emoji" style="color:var(--gray);">' + SAFEHOME.icon2('clock') + '</div>' +
         '<div class="start-title">이 링크는 만료되었습니다</div>' +
         '<div class="start-sub">보안을 위해 관리자가 발급한 링크는 일정 시간이 지나면 자동으로 접속이 차단됩니다.<br>관리자에게 유효시간 연장 또는 새 링크 발급을 요청해주세요.</div>' +
-        '<a href="tel:119" class="start-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;">📞 119로 전화하기</a>' +
+        '<a href="tel:119" class="start-btn" style="display:block;text-align:center;text-decoration:none;box-sizing:border-box;">' + SAFEHOME.icon2('phone') + ' 119로 전화하기</a>' +
       '</div>';
   }
 

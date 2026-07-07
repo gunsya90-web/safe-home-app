@@ -16,11 +16,11 @@
       title: '화재가 어디에서 발생했습니까?',
       sub: '현재 불이 난 위치를 선택해주세요.',
       options: [
-        { value: '우리집', emoji: '🏠', label: '우리 집', desc: '내가 있는 세대 안에서 발생' },
-        { value: '같은층', emoji: '↔️', label: '같은 층 다른 세대·복도', desc: '같은 층 이웃 세대 또는 복도에서 발생' },
-        { value: '아래층', emoji: '⬇️', label: '아래층', desc: '우리 집보다 아래층에서 발생' },
-        { value: '위층', emoji: '⬆️', label: '위층', desc: '우리 집보다 위층에서 발생' },
-        { value: '모름', emoji: '❓', label: '모름', desc: '정확한 발화 위치를 알 수 없음' }
+        { value: '우리집', emoji: SAFEHOME.icon2('home'), label: '우리 집', desc: '내가 있는 세대 안에서 발생' },
+        { value: '같은층', emoji: SAFEHOME.icon2('sameFloor'), label: '같은 층 다른 세대·복도', desc: '같은 층 이웃 세대 또는 복도에서 발생' },
+        { value: '아래층', emoji: SAFEHOME.icon2('arrowDown'), label: '아래층', desc: '우리 집보다 아래층에서 발생' },
+        { value: '위층', emoji: SAFEHOME.icon2('arrowUp'), label: '위층', desc: '우리 집보다 위층에서 발생' },
+        { value: '모름', emoji: SAFEHOME.icon2('help'), label: '모름', desc: '정확한 발화 위치를 알 수 없음' }
       ]
     },
     q2: {
@@ -29,10 +29,10 @@
       title: '우리 집 안으로 연기나 화염이 들어오고 있습니까?',
       sub: '현재 내가 있는 공간의 상태를 확인해주세요.',
       options: [
-        { value: '없음', emoji: '✅', label: '연기 없음', desc: '아직 집 안은 안전한 상태' },
-        { value: '조금있음', emoji: '🌫️', label: '연기 조금 있음', desc: '옅은 연기 냄새 또는 흐릿한 연기' },
-        { value: '많음또는화염', emoji: '🔥', label: '연기 많음 · 화염 보임', desc: '시야 확보가 어렵거나 불꽃이 직접 보임', danger: true },
-        { value: '모르겠음', emoji: '❔', label: '모르겠음', desc: '정확한 상태를 판단하기 어려움' }
+        { value: '없음', emoji: SAFEHOME.icon2('check'), label: '연기 없음', desc: '아직 집 안은 안전한 상태' },
+        { value: '조금있음', emoji: SAFEHOME.icon2('smoke'), label: '연기 조금 있음', desc: '옅은 연기 냄새 또는 흐릿한 연기' },
+        { value: '많음또는화염', emoji: SAFEHOME.icon2('flame'), label: '연기 많음 · 화염 보임', desc: '시야 확보가 어렵거나 불꽃이 직접 보임', danger: true },
+        { value: '모르겠음', emoji: SAFEHOME.icon2('help'), label: '모르겠음', desc: '정확한 상태를 판단하기 어려움' }
       ]
     },
     q3: {
@@ -41,10 +41,10 @@
       title: '현관문 밖으로 나갈 수 있습니까?',
       sub: '문을 열기 전 손잡이 온도를 확인하고, 문 밖 복도 상태를 살펴주세요.',
       options: [
-        { value: '가능하다', emoji: '🚪', label: '가능하다', desc: '복도에 연기·화염이 없거나 적음' },
-        { value: '문밖연기있음', emoji: '🌫️', label: '문 밖에 연기 있음', desc: '문을 열면 연기가 들어옴' },
-        { value: '문밖화염있음', emoji: '🔥', label: '문 밖에 화염 있음', desc: '문 밖에서 불꽃이 보임', danger: true },
-        { value: '모르겠다', emoji: '❔', label: '모르겠다', desc: '아직 확인하지 못함' }
+        { value: '가능하다', emoji: SAFEHOME.icon2('door'), label: '가능하다', desc: '복도에 연기·화염이 없거나 적음' },
+        { value: '문밖연기있음', emoji: SAFEHOME.icon2('smoke'), label: '문 밖에 연기 있음', desc: '문을 열면 연기가 들어옴' },
+        { value: '문밖화염있음', emoji: SAFEHOME.icon2('flame'), label: '문 밖에 화염 있음', desc: '문 밖에서 불꽃이 보임', danger: true },
+        { value: '모르겠다', emoji: SAFEHOME.icon2('help'), label: '모르겠다', desc: '아직 확인하지 못함' }
       ]
     },
     q5: {
@@ -53,10 +53,10 @@
       title: '신고자는 화점층보다 어디에 위치해 있습니까?',
       sub: '화재 발생 지점을 기준으로 내 위치를 선택해주세요.',
       options: [
-        { value: '위', emoji: '⬆️', label: '화재 층보다 위' },
-        { value: '아래', emoji: '⬇️', label: '화재 층보다 아래' },
-        { value: '같은층', emoji: '➡️', label: '화재 층과 같은 층' },
-        { value: '모름', emoji: '❓', label: '모름' }
+        { value: '위', emoji: SAFEHOME.icon2('arrowUp'), label: '화재 층보다 위' },
+        { value: '아래', emoji: SAFEHOME.icon2('arrowDown'), label: '화재 층보다 아래' },
+        { value: '같은층', emoji: SAFEHOME.icon2('arrowRight'), label: '화재 층과 같은 층' },
+        { value: '모름', emoji: SAFEHOME.icon2('help'), label: '모름' }
       ]
     }
   };
@@ -66,13 +66,13 @@
   // 2. AFP-Core 항목 정의 (입주민 · 119가 즉시 쓰는 행동정보)
   // ---------------------------------------------------------------------
   SAFEHOME.AFP_CORE_FIELDS = [
-    { key: 'downwardEvacuationHatch', label: '하향식 피난구', icon: '⬇️', yes: '설치', no: '미설치' },
-    { key: 'inUnitShelter', label: '세대 내 대피공간', icon: '🛡️', yes: '설치', no: '미설치' },
-    { key: 'lightPartition', label: '경량칸막이', icon: '🚪', yes: '설치', no: '미설치' },
-    { key: 'roofEvacuation', label: '옥상 대피 가능 여부', icon: '🏢', yes: '가능', no: '불가능' },
-    { key: 'roofAutoDoor', label: '옥상 차동개폐장치', icon: '⚙️', yes: '설치', no: '미설치' },
-    { key: 'refugeArea', label: '피난안전구역', icon: '🧭', yes: '설치', no: '미설치' },
-    { key: 'airSafetyMat', label: '공기안전매트', icon: '🛟', yes: '비치', no: '미비치' }
+    { key: 'downwardEvacuationHatch', label: '하향식 피난구', icon: SAFEHOME.icon2('arrowDown'), yes: '설치', no: '미설치' },
+    { key: 'inUnitShelter', label: '세대 내 대피공간', icon: SAFEHOME.icon2('shield'), yes: '설치', no: '미설치' },
+    { key: 'lightPartition', label: '경량칸막이', icon: SAFEHOME.icon2('door'), yes: '설치', no: '미설치' },
+    { key: 'roofEvacuation', label: '옥상 대피 가능 여부', icon: SAFEHOME.icon2('building'), yes: '가능', no: '불가능' },
+    { key: 'roofAutoDoor', label: '옥상 차동개폐장치', icon: SAFEHOME.icon2('gear'), yes: '설치', no: '미설치' },
+    { key: 'refugeArea', label: '피난안전구역', icon: SAFEHOME.icon2('compass'), yes: '설치', no: '미설치' },
+    { key: 'airSafetyMat', label: '공기안전매트', icon: SAFEHOME.icon2('shield'), yes: '비치', no: '미비치' }
   ];
 
   // ---------------------------------------------------------------------
@@ -80,9 +80,9 @@
   //      피난시설(AFP_CORE_FIELDS)과 달리 입주민의 대피 판정(rules.js decide())에는 관여하지 않는다.
   // ---------------------------------------------------------------------
   SAFEHOME.AFP_SUPPRESSION_FIELDS = [
-    { key: 'indoorHydrant', label: '옥내소화전', icon: '🧯', yes: '설치', no: '미설치' },
-    { key: 'sprinkler', label: '스프링클러', icon: '💦', yes: '설치', no: '미설치' },
-    { key: 'waterSprayConnection', label: '연결살수설비', icon: '🚿', yes: '설치', no: '미설치' }
+    { key: 'indoorHydrant', label: '옥내소화전', icon: SAFEHOME.icon2('drop'), yes: '설치', no: '미설치' },
+    { key: 'sprinkler', label: '스프링클러', icon: SAFEHOME.icon2('drop'), yes: '설치', no: '미설치' },
+    { key: 'waterSprayConnection', label: '연결살수설비', icon: SAFEHOME.icon2('drop'), yes: '설치', no: '미설치' }
   ];
 
   // 실제 데이터(대구 등 지역 아파트 일괄 등록)를 들여올 때, 소방시설현황·평면도는 아직 없으므로
@@ -280,6 +280,29 @@
     return null;
   };
 
+  // 등록 건물이 대량(수백~수천 개 동)일 때 <select> 하나에 다 나열하면 찾기 힘들어서,
+  // 아파트명을 먼저 검색으로 좁힌 뒤 그 아파트의 동만 골라 담은 짧은 select를 보여준다.
+  // 관리자 화면(새 화재 등록·소방시설 점검 링크)과 입주민 시작화면에서 공용으로 쓴다.
+  function matchingBuildingIds(query) {
+    var nq = normalizeAddr(query);
+    return Object.keys(SAFEHOME.BUILDINGS).filter(function (id) {
+      return !nq || normalizeAddr(SAFEHOME.BUILDINGS[id].apt).indexOf(nq) !== -1;
+    });
+  }
+  SAFEHOME.matchingBuildingIds = matchingBuildingIds;
+
+  function buildingSelectOptionsHtml(query, selectedId) {
+    var esc = SAFEHOME.escapeHtml;
+    if (!query) return '<option value="">먼저 아파트명을 검색하세요</option>';
+    var ids = matchingBuildingIds(query);
+    if (!ids.length) return '<option value="">일치하는 아파트가 없습니다</option>';
+    return '<option value="">동 선택</option>' + ids.map(function (id) {
+      var b = SAFEHOME.BUILDINGS[id];
+      return '<option value="' + id + '"' + (selectedId === id ? ' selected' : '') + '>' + esc(b.apt) + ' ' + esc(b.dong) + '동 (' + SAFEHOME.buildingUnitSummary(b) + ')</option>';
+    }).join('');
+  }
+  SAFEHOME.buildingSelectOptionsHtml = buildingSelectOptionsHtml;
+
   // 세대 그리드 생성 (Live Occupancy Status 데모용) — 확정된 건물 기준으로 생성한다.
   function buildUnitId(floor, unitIdx) {
     return String(floor) + String(unitIdx).padStart(2, '0');
@@ -327,11 +350,11 @@
 
   // 세대 상태 정의 (Live Occupancy Status)
   SAFEHOME.STATUS_META = {
-    unresponded: { label: '미응답', color: '#9AA0A6', desc: '아직 응답이 없는 세대' },
-    waiting: { label: '대피공간 · 세대 내 대기', color: '#1565C0', desc: '실내 대기 중' },
-    moving: { label: '피난구 이용 · 이동 중', color: '#F0A500', desc: '대체 대피시설로 이동 중' },
-    danger: { label: '연기 유입 · 대피 불가', color: '#D7263D', desc: '즉시 구조가 필요한 상태' },
-    safe: { label: '대피 완료', color: '#2E7D32', desc: '안전하게 대피 완료' }
+    unresponded: { label: '미응답', color: '#9AA0A6', desc: '아직 응답이 없는 세대', icon: SAFEHOME.icon2('help') },
+    waiting: { label: '대피공간 · 세대 내 대기', color: '#1565C0', desc: '실내 대기 중', icon: SAFEHOME.icon2('home') },
+    moving: { label: '피난구 이용 · 이동 중', color: '#F0A500', desc: '대체 대피시설로 이동 중', icon: SAFEHOME.icon2('running') },
+    danger: { label: '연기 유입 · 대피 불가', color: '#D7263D', desc: '즉시 구조가 필요한 상태', icon: SAFEHOME.icon2('alert') },
+    safe: { label: '대피 완료', color: '#2E7D32', desc: '안전하게 대피 완료', icon: SAFEHOME.icon2('check') }
   };
 
 }(window.SAFEHOME = window.SAFEHOME || {}));

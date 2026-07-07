@@ -14,13 +14,13 @@
 <div id="app">
 
   <div class="topbar" id="topbar">
-    <span class="icon">🔥</span>
+    <span class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.2em;"><path d="M12 2.5l8 3.2v6c0 5-3.4 8.6-8 9.8-4.6-1.2-8-4.8-8-9.8v-6z"/><path d="M12.2 6.7c-1.6 2-2.3 3-2.3 4.3a2.4 2.4 0 0 0 4.8.2c0-.9-.4-1.5-1-2.2.1.9-.2 1.4-.7 1.7-.1-1.4-.3-2.6-.8-4z" fill="currentColor" stroke="none"/></svg></span>
     <div class="labelwrap">
       <div class="label">SAFE-HOME · 화재 대응 플랫폼</div>
       <div class="loc" id="topbarLoc"></div>
     </div>
-    <button class="theme-toggle-btn" id="themeToggleBtn" title="다크모드 전환">🌙</button>
-    <button class="reset-btn" id="resetDemoBtn" title="데모 데이터 초기화">⟲</button>
+    <button class="theme-toggle-btn" id="themeToggleBtn" title="다크모드 전환"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></button>
+    <button class="reset-btn" id="resetDemoBtn" title="데모 데이터 초기화"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
   </div>
 
   <div class="progress-wrap" id="progressWrap" style="display:none;">
@@ -28,21 +28,21 @@
   </div>
 
   <nav class="role-tabs" id="roleTabs">
-    <button class="role-tab active" data-role="resident">🏠 입주민<span class="tab-badge" id="badge-resident"></span></button>
-    <button class="role-tab" data-role="situation">📞 119 상황실<span class="tab-badge" id="badge-situation"></span></button>
-    <button class="role-tab" data-role="firefighter">🚒 소방대원<span class="tab-badge" id="badge-firefighter"></span></button>
+    <button class="role-tab active" data-role="resident"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> 입주민<span class="tab-badge" id="badge-resident"></span></button>
+    <button class="role-tab" data-role="situation"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/></svg> 119 상황실<span class="tab-badge" id="badge-situation"></span></button>
+    <button class="role-tab" data-role="firefighter"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/></svg> 소방대원<span class="tab-badge" id="badge-firefighter"></span></button>
   </nav>
 
   <main id="view-root" class="view-root"></main>
 
   <div class="sos-fab" id="sosFab" style="display:none;">
-    <a href="tel:119">📞 119 상황실과 바로 통화하기</a>
+    <a href="tel:119"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/></svg> 119 상황실과 바로 통화하기</a>
   </div>
 
 </div>
 
-<script src="js/data.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/data.js"></script>
 <script src="js/store.js"></script>
 <script src="js/rules.js"></script>
 <script src="js/resident.js"></script>

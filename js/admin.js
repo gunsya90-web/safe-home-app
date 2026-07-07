@@ -54,7 +54,7 @@
   function renderLogin() {
     root.innerHTML =
       '<div class="start-screen">' +
-        '<div class="start-emoji">🛠</div>' +
+        '<div class="start-emoji" style="color:var(--ink);">' + SAFEHOME.icon2('wrench') + '</div>' +
         '<div class="start-title">관리자 모드</div>' +
         '<div class="start-sub">비밀번호를 입력해주세요.<br>관리자는 화재 발생 위치 지정, 링크 발급·유효시간 설정을 담당합니다.</div>' +
         '<div class="home-box" style="align-items:stretch;">' +
@@ -85,9 +85,9 @@
 
     root.innerHTML =
       '<div class="dash-header">' +
-        '<div class="dash-title">🛠 관리자 모드</div>' +
+        '<div class="dash-title">' + SAFEHOME.icon2('wrench') + ' 관리자 모드</div>' +
         '<div class="dash-sub">' + (incidents.length ? incidents.length + '건 진행 중' : '진행 중인 사건 없음') + '</div>' +
-        '<button class="utility-btn secondary" id="ad-logout" style="margin-top:8px;">🔒 로그아웃</button>' +
+        '<button class="utility-btn secondary" id="ad-logout" style="margin-top:8px;">' + SAFEHOME.icon2('lock') + ' 로그아웃</button>' +
       '</div>' +
       (incidents.length ? incidentTabsHtml(incidents, active) : addIncidentBarHtml()) +
       (formMode ? formPanelHtml(pending) : '') +
@@ -117,37 +117,10 @@
     '</div>';
   }
 
-  // 등록 건물이 대량(수백~수천 개 동)일 때 <select> 하나에 다 나열하면 찾기 힘들어서,
-  // 아파트명을 먼저 검색으로 좁힌 뒤 그 아파트의 동만 골라 담은 짧은 select를 보여준다.
-  function matchingBuildingIds(query) {
-    var nq = SAFEHOME.normalizeAddr(query);
-    return Object.keys(SAFEHOME.BUILDINGS).filter(function (id) {
-      return !nq || SAFEHOME.normalizeAddr(SAFEHOME.BUILDINGS[id].apt).indexOf(nq) !== -1;
-    });
-  }
-  function buildingSelectOptionsHtml(query, selectedId) {
-    if (!query) return '<option value="">먼저 아파트명을 검색하세요</option>';
-    var ids = matchingBuildingIds(query);
-    if (!ids.length) return '<option value="">일치하는 아파트가 없습니다</option>';
-    return '<option value="">동 선택</option>' + ids.map(function (id) {
-      var b = SAFEHOME.BUILDINGS[id];
-      return '<option value="' + id + '"' + (selectedId === id ? ' selected' : '') + '>' + esc(b.apt) + ' ' + esc(b.dong) + '동 (' + SAFEHOME.buildingUnitSummary(b) + ')</option>';
-    }).join('');
-  }
-  function collectAptNames() {
-    var names = [];
-    Object.keys(SAFEHOME.BUILDINGS).forEach(function (id) {
-      var apt = SAFEHOME.BUILDINGS[id].apt;
-      if (names.indexOf(apt) === -1) names.push(apt);
-    });
-    return names;
-  }
-  function aptDatalistHtml(listId) {
-    return '<datalist id="' + listId + '">' +
-      collectAptNames().map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') +
-      '</datalist>';
-  }
-
+  // 아파트명 검색→동 선택 매칭/렌더링은 data.js의 SAFEHOME.matchingBuildingIds()/
+  // SAFEHOME.buildingSelectOptionsHtml()로 공용화되어 있다(입주민 화면과 공유).
+  var matchingBuildingIds = SAFEHOME.matchingBuildingIds;
+  var buildingSelectOptionsHtml = SAFEHOME.buildingSelectOptionsHtml;
   // 링크 하나를 "복사"/"바로 이동" 버튼과 함께 보여주는 공용 렌더러 — 입주민/소방대원/소방시설점검/
   // 119 상황실 링크 전부 이 형태로 통일한다. "바로 이동"은 관리자 화면을 벗어나지 않도록 새 탭으로 연다.
   function linkRowHtml(labelHtml, inputId, url, extraHtml) {
@@ -155,19 +128,18 @@
       '<input readonly value="' + esc(url) + '" id="' + inputId + '" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:12px;background:#fff;">' +
       (extraHtml || '') +
       '<div style="display:flex;gap:8px;margin-top:6px;">' +
-        '<button class="utility-btn" style="flex:1;" data-copy-link="' + inputId + '">📋 복사</button>' +
-        '<button class="utility-btn secondary" style="flex:1;" data-open-link="' + inputId + '">🔗 바로 이동</button>' +
+        '<button class="utility-btn" style="flex:1;" data-copy-link="' + inputId + '">' + SAFEHOME.icon2('copy') + ' 복사</button>' +
+        '<button class="utility-btn secondary" style="flex:1;" data-open-link="' + inputId + '">' + SAFEHOME.icon2('link') + ' 바로 이동</button>' +
       '</div>';
   }
 
   // --------------------------------------------------------- 사건 생성/변경 폼
   function formPanelHtml(pending) {
     var isEdit = formMode === 'edit';
-    var title = isEdit ? '🔁 화재 위치 변경 / 재확인' : '🚨 새 화재 등록';
+    var title = isEdit ? SAFEHOME.icon2('refresh') + ' 화재 위치 변경 / 재확인' : SAFEHOME.icon2('siren') + ' 새 화재 등록';
     var note = isEdit
       ? '이 사건의 건물·최초 신고 세대를 다시 확인하거나 정정합니다.'
       : '00아파트 0동 0호에 화재가 발생했다면 여기서 건물과 최초 발화 세대를 지정하세요. 지정 즉시 입주민·119 상황실·소방대원 화면이 함께 갱신됩니다.';
-    var aptOptionsHtml = aptDatalistHtml('ad-apt-options');
     var reportPicker = '';
     if (pending.length && formMode === 'new') {
       reportPicker = '<div class="facility-field" style="margin-bottom:10px;"><label>기준 신고 선택 (선택)</label>' +
@@ -182,12 +154,12 @@
       '<div style="text-align:left;">' +
         reportPicker +
         '<div class="facility-grid">' +
-          '<div class="facility-field"><label>아파트명 검색</label><input id="ad-form-apt-query" list="ad-apt-options" placeholder="🔎 아파트명 검색" value="' + esc(formAptQuery) + '" autocomplete="off" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:13px;background:#FAFAF8;">' + aptOptionsHtml + '</div>' +
+          '<div class="facility-field"><label>아파트명 검색</label><input id="ad-form-apt-query" placeholder="🔎 아파트명 검색" value="' + esc(formAptQuery) + '" autocomplete="off" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:13px;background:#FAFAF8;"></div>' +
           '<div class="facility-field"><label>동 선택</label><select id="ad-form-building">' + buildingSelectOptionsHtml(formAptQuery, formBuildingId) + '</select></div>' +
           '<div class="facility-field"><label>최초 발화 세대(호)</label><input id="ad-form-ho" placeholder="예: 502" value="' + esc(formHo) + '" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:13px;background:#FAFAF8;"></div>' +
         '</div>' +
         '<div class="kapt-actions" style="margin-top:12px;">' +
-          '<button class="primary" id="ad-form-confirm">✅ 이 위치로 화재 확정</button>' +
+          '<button class="primary" id="ad-form-confirm">' + SAFEHOME.icon2('check') + ' 이 위치로 화재 확정</button>' +
           (isEdit ? '<button class="ghost" id="ad-form-cancel">취소</button>' : '') +
         '</div>' +
       '</div>' +
@@ -202,32 +174,32 @@
     var residentExpired = now > inc.residentLinkExp;
     var ffExpired = now > inc.firefighterLinkExp;
     return '<div class="panel" style="border-color:#A5D6A7;background:#F4FBF4;">' +
-      '<h3 class="panel-title">🏢 화재 위치</h3>' +
+      '<h3 class="panel-title">' + SAFEHOME.icon2('building') + ' 화재 위치</h3>' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:4px;">' +
         '<div style="font-size:15px;font-weight:900;">' + esc(inc.apt) + ' ' + esc(inc.dong) + '동' + (inc.officialHo ? ' · 최초 신고 ' + esc(inc.officialHo) + '호' : '') + '</div>' +
-        '<button class="utility-btn secondary" id="ad-reopen-form">🔁 위치 변경 / 재확인</button>' +
+        '<button class="utility-btn secondary" id="ad-reopen-form">' + SAFEHOME.icon2('refresh') + ' 위치 변경 / 재확인</button>' +
       '</div>' +
       '<div style="font-size:12px;color:var(--gray);margin-bottom:10px;">' + SAFEHOME.fmtTime(inc.confirmedAt) + ' 확정</div>' +
-      '<button class="utility-btn secondary" style="width:100%;" id="ad-close-incident">🔚 이 사건 종료</button>' +
+      '<button class="utility-btn secondary" style="width:100%;" id="ad-close-incident">' + SAFEHOME.icon2('stop') + ' 이 사건 종료</button>' +
       '<div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);text-align:left;">' +
         linkRowHtml(
-          '🔗 이 동 입주민에게 배포할 링크 (아파트·동 자동 지정, 호만 입력)',
+          SAFEHOME.icon2('link') + ' 이 동 입주민에게 배포할 링크 (아파트·동 자동 지정, 호만 입력)',
           'ad-resident-link', residentLink,
-          '<div style="font-size:11px;margin:6px 0;color:' + (residentExpired ? 'var(--red)' : 'var(--gray)') + ';font-weight:800;">' + (residentExpired ? '⛔ 만료됨' : '⏱ ' + SAFEHOME.fmtTime(inc.residentLinkExp) + ' 까지 유효') + '</div>'
+          '<div style="font-size:11px;margin:6px 0;color:' + (residentExpired ? 'var(--red)' : 'var(--gray)') + ';font-weight:800;">' + (residentExpired ? SAFEHOME.icon2('noEntry') + ' 만료됨' : SAFEHOME.icon2('clock') + ' ' + SAFEHOME.fmtTime(inc.residentLinkExp) + ' 까지 유효') + '</div>'
         ) +
         linkRowHtml(
-          '🔗 이 사건 전담 소방대원에게 배포할 링크',
+          SAFEHOME.icon2('link') + ' 이 사건 전담 소방대원에게 배포할 링크',
           'ad-firefighter-link', firefighterLink,
-          '<div style="font-size:11px;margin:6px 0;color:' + (ffExpired ? 'var(--red)' : 'var(--gray)') + ';font-weight:800;">' + (ffExpired ? '⛔ 만료됨' : '⏱ ' + SAFEHOME.fmtTime(inc.firefighterLinkExp) + ' 까지 유효') + '</div>'
+          '<div style="font-size:11px;margin:6px 0;color:' + (ffExpired ? 'var(--red)' : 'var(--gray)') + ';font-weight:800;">' + (ffExpired ? SAFEHOME.icon2('noEntry') + ' 만료됨' : SAFEHOME.icon2('clock') + ' ' + SAFEHOME.fmtTime(inc.firefighterLinkExp) + ' 까지 유효') + '</div>'
         ) +
-        '<button class="utility-btn secondary" style="width:100%;margin-top:8px;" id="ad-regen-links">⏱ 두 링크 유효시간 연장 (같은 링크 계속 사용)</button>' +
+        '<button class="utility-btn secondary" style="width:100%;margin-top:8px;" id="ad-regen-links">' + SAFEHOME.icon2('clock') + ' 두 링크 유효시간 연장 (같은 링크 계속 사용)</button>' +
       '</div>' +
     '</div>';
   }
 
   function globalTtlPanelHtml() {
     return '<div class="panel">' +
-      '<h3 class="panel-title">⏱ 배포 링크 기본 유효시간</h3>' +
+      '<h3 class="panel-title">' + SAFEHOME.icon2('clock') + ' 배포 링크 기본 유효시간</h3>' +
       '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray);">' +
         '<span>기본 유효시간(시간):</span>' +
         '<input id="ad-link-ttl" type="number" min="1" step="1" value="' + SAFEHOME.store.getLinkTtlHours() + '" style="width:56px;border:1.5px solid var(--line);border-radius:8px;padding:4px 6px;font-size:12px;">' +
@@ -240,22 +212,22 @@
   // 사건(화재)과 무관하게, 등록된 건물에 대해 소방시설 점검용 링크를 발급한다.
   // 건물이 대량 등록되면 전부 나열하는 대신 아파트명 검색 → 동 선택으로 하나만 골라 보여준다.
   // 아파트 관리사무소/소방시설관리사가 정기 점검 후 이 링크로 접속해 직접 현황을 갱신할 수 있다.
+  function facilityLinkSectionHtml(buildingId) {
+    if (!buildingId || !SAFEHOME.BUILDINGS[buildingId]) return '';
+    var b = SAFEHOME.BUILDINGS[buildingId];
+    var link = location.origin + location.pathname + '?role=facility&building=' + encodeURIComponent(buildingId);
+    return linkRowHtml(SAFEHOME.icon2('link') + ' ' + esc(b.apt) + ' ' + esc(b.dong) + '동 점검 링크', 'ad-facility-link', link);
+  }
   function facilityLinksPanelHtml() {
-    var aptOptionsHtml = aptDatalistHtml('ad-facility-apt-options');
-    var linkSection = '';
-    if (facilityBuildingId && SAFEHOME.BUILDINGS[facilityBuildingId]) {
-      var b = SAFEHOME.BUILDINGS[facilityBuildingId];
-      var link = location.origin + location.pathname + '?role=facility&building=' + encodeURIComponent(facilityBuildingId);
-      linkSection = linkRowHtml('🔗 ' + esc(b.apt) + ' ' + esc(b.dong) + '동 점검 링크', 'ad-facility-link', link);
-    }
+    var linkSection = facilityLinkSectionHtml(facilityBuildingId);
     var body =
       '<div class="afp-note" style="margin-bottom:10px;">화재 발생 여부와 무관하게 건물별로 발급되는 링크입니다. 아파트명을 검색해 동을 선택하면 그 동의 점검 링크가 나옵니다.</div>' +
       '<div class="facility-grid">' +
-        '<div class="facility-field"><label>아파트명 검색</label><input id="ad-facility-apt-query" list="ad-facility-apt-options" placeholder="🔎 아파트명 검색" value="' + esc(facilityAptQuery) + '" autocomplete="off" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:13px;background:#FAFAF8;">' + aptOptionsHtml + '</div>' +
+        '<div class="facility-field"><label>아파트명 검색</label><input id="ad-facility-apt-query" placeholder="🔎 아파트명 검색" value="' + esc(facilityAptQuery) + '" autocomplete="off" style="width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 8px;font-size:13px;background:#FAFAF8;"></div>' +
         '<div class="facility-field"><label>동 선택</label><select id="ad-facility-building-select">' + buildingSelectOptionsHtml(facilityAptQuery, facilityBuildingId) + '</select></div>' +
       '</div>' +
       '<div id="ad-facility-link-section">' + linkSection + '</div>';
-    return SAFEHOME.detailsPanel('🧯 소방시설 점검 링크 발급', body, { id: 'facility-links', closed: true, openState: panelOpenState['facility-links'] });
+    return SAFEHOME.detailsPanel(SAFEHOME.icon2('drop') + ' 소방시설 점검 링크 발급', body, { id: 'facility-links', closed: true, openState: panelOpenState['facility-links'] });
   }
 
   // 119 상황실은 사건별로 나뉘지 않는 공용 화면이라, 확정된 사건과 무관하게 고정 링크 하나만 있으면 된다.
@@ -263,8 +235,8 @@
     var link = location.origin + location.pathname + '?role=situation';
     var body =
       '<div class="afp-note" style="margin-bottom:10px;">119 상황실은 사건마다 따로 링크가 있지 않고, 관리자가 확정해둔 모든 사건을 한 화면에서 모니터링합니다.</div>' +
-      linkRowHtml('🔗 119 상황실 화면 링크', 'ad-situation-link', link);
-    return SAFEHOME.detailsPanel('📞 119 상황실 링크', body, { id: 'situation-link', closed: true, openState: panelOpenState['situation-link'] });
+      linkRowHtml(SAFEHOME.icon2('link') + ' 119 상황실 화면 링크', 'ad-situation-link', link);
+    return SAFEHOME.detailsPanel(SAFEHOME.icon2('phone') + ' 119 상황실 링크', body, { id: 'situation-link', closed: true, openState: panelOpenState['situation-link'] });
   }
 
   // 아파트명·동·호(평면도·소방시설현황 제외) 일괄 등록 — 공공데이터 등에서 받은 목록을 붙여넣어 등록한다.
@@ -279,7 +251,7 @@
       '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--gray);"><input type="checkbox" id="ad-import-header">첫 줄은 제목행(헤더)이라 건너뜁니다</label>' +
       '<button class="start-btn" id="ad-import-buildings" style="margin-top:8px;">아파트 정보 가져오기</button>' +
       '<div class="afp-note" style="margin-top:10px;">현재 일괄 등록된 건물: ' + registeredCount + '개 동 · 소방시설 현황은 등록 직후 전부 "확인 필요" 상태이며, 위 "소방시설 점검 링크"로 채워야 합니다.</div>';
-    return SAFEHOME.detailsPanel('🏢 아파트 정보 일괄 등록 (CSV)', body, { id: 'building-import', closed: true, openState: panelOpenState['building-import'] });
+    return SAFEHOME.detailsPanel(SAFEHOME.icon2('building') + ' 아파트 정보 일괄 등록 (CSV)', body, { id: 'building-import', closed: true, openState: panelOpenState['building-import'] });
   }
 
   function parseBuildingCsv(text, skipHeader) {
@@ -291,6 +263,20 @@
     }).filter(function (r) { return r.apt && r.dong && r.ho; });
   }
 
+  // 링크 복사/바로가기 버튼은 전체 렌더 때(root 기준)뿐 아니라, 포커스를 지키려고 일부 영역만
+  // innerHTML로 갈아끼울 때도 다시 걸어줘야 하므로 범위(scopeEl)를 받는 형태로 뺐다.
+  function bindLinkButtons(scopeEl) {
+    scopeEl.querySelectorAll('[data-copy-link]').forEach(function (el) {
+      el.onclick = function () { copyInputValue(el.getAttribute('data-copy-link'), '링크가 복사되었습니다.'); };
+    });
+    scopeEl.querySelectorAll('[data-open-link]').forEach(function (el) {
+      el.onclick = function () {
+        var input = document.getElementById(el.getAttribute('data-open-link'));
+        if (input && input.value) window.open(input.value, '_blank');
+      };
+    });
+  }
+
   function bindEvents() {
     SAFEHOME.bindPanelToggles(root, panelOpenState);
     var logoutBtn = document.getElementById('ad-logout');
@@ -300,25 +286,22 @@
       render();
     };
     // 입주민/소방대원/소방시설점검/119상황실 링크 전부 이 두 속성으로 통일해서 다룬다.
-    root.querySelectorAll('[data-copy-link]').forEach(function (el) {
-      el.onclick = function () { copyInputValue(el.getAttribute('data-copy-link'), '링크가 복사되었습니다.'); };
-    });
-    root.querySelectorAll('[data-open-link]').forEach(function (el) {
-      el.onclick = function () {
-        var input = document.getElementById(el.getAttribute('data-open-link'));
-        if (input && input.value) window.open(input.value, '_blank');
-      };
-    });
+    bindLinkButtons(root);
     var facilityAptQueryEl = document.getElementById('ad-facility-apt-query');
     if (facilityAptQueryEl) facilityAptQueryEl.oninput = function () {
       facilityAptQuery = facilityAptQueryEl.value;
-      facilityBuildingId = '';
+      // 검색어와 일치하는 동이 딱 하나뿐이면(예: 정확한 아파트명 + 단일 동) 바로 그 동을 선택하고
+      // 점검 링크까지 바로 보여준다 — 여러 개면 select에 나열된 것 중 사용자가 고르게 둔다.
+      var candidates = matchingBuildingIds(facilityAptQuery);
+      facilityBuildingId = (facilityAptQuery && candidates.length === 1) ? candidates[0] : '';
       var sel = document.getElementById('ad-facility-building-select');
       if (sel) sel.innerHTML = buildingSelectOptionsHtml(facilityAptQuery, facilityBuildingId);
-      // 검색어가 바뀌면 이전에 선택했던 동의 링크는 더 이상 유효한 선택이 아니므로 감춘다
-      // (입력 포커스를 지키기 위해 패널 전체를 다시 그리지 않고 이 영역만 비운다).
+      // 입력 포커스를 지키기 위해 패널 전체를 다시 그리지 않고 이 영역만 갱신한다.
       var linkSection = document.getElementById('ad-facility-link-section');
-      if (linkSection) linkSection.innerHTML = '';
+      if (linkSection) {
+        linkSection.innerHTML = facilityLinkSectionHtml(facilityBuildingId);
+        bindLinkButtons(linkSection);
+      }
     };
     var facilityBuildingSelectEl = document.getElementById('ad-facility-building-select');
     if (facilityBuildingSelectEl) facilityBuildingSelectEl.onchange = function () {
@@ -379,7 +362,9 @@
     var aptQueryEl = document.getElementById('ad-form-apt-query');
     if (aptQueryEl) aptQueryEl.oninput = function () {
       formAptQuery = aptQueryEl.value;
-      formBuildingId = '';
+      // 검색어와 일치하는 동이 딱 하나뿐이면 바로 그 동을 선택해둔다 — 여러 개면 select에서 고르게 둔다.
+      var candidates = matchingBuildingIds(formAptQuery);
+      formBuildingId = (formAptQuery && candidates.length === 1) ? candidates[0] : '';
       var sel = document.getElementById('ad-form-building');
       if (sel) sel.innerHTML = buildingSelectOptionsHtml(formAptQuery, formBuildingId);
     };
