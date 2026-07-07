@@ -271,11 +271,12 @@ def _call_once_xml(base_url, extra_params, sample_tag):
 EXPOS_PAGE_SIZE = 100  # 이 API는 numOfRows를 크게 요청해도 서버가 한 페이지당 최대 100건으로 잘라서 주는 것으로 확인됨
 
 
-def _fetch_units_page(sigungu_code, bdong_code, bun, ji, page_no):
+def _fetch_units_page(sigungu_code, bdong_code, bun, ji, page_no, plat_gb_cd):
     """전유부 한 페이지(최대 EXPOS_PAGE_SIZE건)를 가져온다. 실패하면(대부분 순간적인 호출 제한) 재시도한다."""
     params = {
         "numOfRows": str(EXPOS_PAGE_SIZE), "pageNo": str(page_no),
         "sigunguCd": sigungu_code, "bjdongCd": bdong_code,
+        "platGbCd": plat_gb_cd,  # 대지구분(0=대지, 1=산) — 건축물대장 계열 API의 필수 파라미터
     }
     if bun:
         params["bun"] = str(bun).zfill(4)
@@ -292,18 +293,15 @@ def _fetch_units_page(sigungu_code, bdong_code, bun, ji, page_no):
     return body, err
 
 
-def fetch_units(sigungu_code, bdong_code, bun, ji):
-    """3단계: 특정 지번(번지)의 전유부(동명칭/호명칭) 전체를 가져온다.
-    한 단지가 EXPOS_PAGE_SIZE세대보다 많으면(대부분의 아파트가 그렇다) 여러 페이지에 걸쳐 나뉘어
-    오므로, totalCount에 도달할 때까지 또는 마지막 페이지(반환 건수가 페이지 크기보다 적음)까지 계속 가져온다."""
+def _fetch_units_with_plat_gb_cd(sigungu_code, bdong_code, bun, ji, plat_gb_cd):
+    """주어진 대지구분(platGbCd)으로 전유부 전체 페이지를 모아온다."""
     all_rows = []
     page_no = 1
     while True:
-        body, err = _fetch_units_page(sigungu_code, bdong_code, bun, ji, page_no)
+        body, err = _fetch_units_page(sigungu_code, bdong_code, bun, ji, page_no, plat_gb_cd)
         if body is None:
             if page_no == 1:
-                print(f"    [전유부 조회 실패] {sigungu_code}/{bdong_code}/{bun}-{ji}: {err}")
-                return []
+                return [], err
             break  # 이미 앞선 페이지는 모아뒀으니 그것만이라도 쓴다
 
         items = body.get("items")
@@ -321,7 +319,24 @@ def fetch_units(sigungu_code, bdong_code, bun, ji):
         page_no += 1
         time.sleep(REQUEST_INTERVAL_SEC)
 
-    return all_rows
+    return all_rows, None
+
+
+def fetch_units(sigungu_code, bdong_code, bun, ji):
+    """3단계: 특정 지번(번지)의 전유부(동명칭/호명칭) 전체를 가져온다.
+    한 단지가 EXPOS_PAGE_SIZE세대보다 많으면(대부분의 아파트가 그렇다) 여러 페이지에 걸쳐 나뉘어
+    오므로, totalCount에 도달할 때까지 또는 마지막 페이지(반환 건수가 페이지 크기보다 적음)까지 계속 가져온다.
+    대지(platGbCd=0)로 먼저 시도하고, 결과가 0건이면 산(platGbCd=1)으로 한 번 더 시도한다 —
+    어느 쪽인지 주소만으로는 확실히 알 수 없어서, 실패로 단정하기 전에 둘 다 확인한다."""
+    rows, err = _fetch_units_with_plat_gb_cd(sigungu_code, bdong_code, bun, ji, "0")
+    if rows:
+        return rows
+    rows2, err2 = _fetch_units_with_plat_gb_cd(sigungu_code, bdong_code, bun, ji, "1")
+    if rows2:
+        return rows2
+    if err or err2:
+        print(f"    [전유부 조회 실패] {sigungu_code}/{bdong_code}/{bun}-{ji}: {err or err2}")
+    return []
 
 
 def find_key(d, keywords):
