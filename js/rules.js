@@ -13,59 +13,33 @@
    * @param {object} afp AFP-Core 정보 (true/false/null)
    * @returns {{key:string, urgency:string, notes:string[]}}
    */
+  SAFEHOME.RULE_VERSION = '2026-09-review-1';
   function decide(a, afp) {
     afp = afp || {};
-    var notes = [];
-    var q2 = a.q2, q3 = a.q3, q5 = a.q5;
-
-    var roomSevere = q2 === '많음또는화염'; // 연기 많음 · 화염 보임 통합 선택지
-    var roomUncertain = q2 === '모르겠음';
-    var doorOk = q3 === '가능하다';
-    var doorBlocked = DOOR_BLOCKED.indexOf(q3) !== -1;
-    var doorCaution = DOOR_CAUTION.indexOf(q3) !== -1;
-
-    // 상황실 정렬용 긴급도
-    var urgency = 'low';
-    if (roomSevere || doorBlocked) urgency = 'critical';
-    else if (roomUncertain || doorCaution) urgency = 'medium';
-
-    function escapeAlternative(reason) {
-      notes.push(reason);
-      if (afp.inUnitShelter) {
-        notes.push('AFP: 세대 내 대피공간 설치 → 대피공간으로 이동');
-        return 'C';
-      }
-      if (afp.downwardEvacuationHatch) {
-        notes.push('AFP: 하향식 피난구 설치 → 아래 세대로 이동');
-        return 'D';
-      }
-      if (afp.lightPartition) {
-        notes.push('AFP: 경량칸막이 설치 → 옆 세대로 이동');
-        return 'E';
-      }
-      notes.push('AFP: 대체 대피시설 없음 → 구조 요청 후 대기');
-      return 'F';
+    var notes = [], severe = a.q2 === '많음또는화염';
+    var unknown = a.q2 === '모르겠음' || a.q1 === '모름' || a.q4 === '모름';
+    var urgency = severe || a.q3 === '문밖화염있음' ? 'critical' : 'medium';
+    function result(key) { return { key: key, urgency: urgency, notes: notes, needsVerification: unknown }; }
+    // 소방청 공동주택 매뉴얼: 다른 곳 화재·세대 내 연기/화염 없음은 상황을 살피며 대기.
+    if (['같은층', '아래층', '위층'].indexOf(a.q1) >= 0 && a.q2 === '없음') {
+      notes.push('다른 곳에서 화재 발생 · 세대 내 연기/화염 없음 → 방송과 상황 변화를 확인하며 대기');
+      return result('B');
     }
-
-    // Tier 1 — 실내 연기가 심하거나(화염 포함) 현관 진입 자체가 불가능한 최우선 위험 상황
-    if (roomSevere || doorBlocked) {
-      var key1 = escapeAlternative('실내 연기 심함(화염 포함) 또는 현관 진입 불가 상태');
-      return { key: key1, urgency: 'critical', notes: notes };
+    if (a.q3 === '가능하다' && a.q4 === '지상안전') {
+      notes.push('현관 통과 가능 · 지상까지 복도/계단 경로가 안전하다고 응답');
+      return result('A');
     }
-
-    // Tier 2 — 현관 밖으로 나갈 수 있고 실내도 비교적 안전한 경우 → 즉시 계단 대피
-    if (doorOk) {
-      notes.push('현관 대피 가능 + 실내 연기 없거나 적음 → 즉시 계단 대피');
-      return { key: 'A', urgency: 'low', notes: notes };
+    if (a.q5 === '위' && a.q3 === '가능하다' && a.q4 === '옥상안전' && afp.roofEvacuation === true) {
+      notes.push('신고자가 화점층보다 위 · 옥상까지 경로와 출입 가능 확인 응답');
+      return result('G');
     }
-
-    // Tier 3 — 현관 밖 상황이 불확실한 경우: 화재가 아래층이고 옥상 대피가 가능하면 옥상도 검토
-    if (q5 === '아래' && afp.roofEvacuation) {
-      notes.push('현관 밖 상황 불확실 + 화재가 아래층 + 옥상 대피 가능(AFP) → 옥상 대피 검토');
-      return { key: 'G', urgency: urgency, notes: notes };
-    }
-    var key3 = escapeAlternative('현관 밖 상황 불확실(연기 또는 미확인)');
-    return { key: key3, urgency: urgency, notes: notes };
+    notes.push('대피 경로 안전을 확인하지 못했거나 이동이 어려움');
+    if (afp.inUnitShelter === true) { notes.push('등록정보: 세대 내 대피공간 설치'); return result('C'); }
+    if (afp.downwardEvacuationHatch === true) { notes.push('등록정보: 하향식 피난구 설치 · 아래 세대 상태 확인 필요'); return result('D'); }
+    if (afp.lightPartition === true) { notes.push('등록정보: 경량칸막이 설치 · 이동 가능 여부 확인 필요'); return result('E'); }
+    var fields = ['inUnitShelter', 'downwardEvacuationHatch', 'lightPartition'];
+    notes.push(fields.every(function(k){return afp[k] === false;}) ? '등록정보: 대체 시설 미설치' : '시설정보가 미확인입니다. 미설치로 단정하지 않습니다.');
+    return result('F');
   }
   SAFEHOME.decide = decide;
 
@@ -75,7 +49,7 @@
   SAFEHOME.RESULTS = {
     A: {
       icon: SAFEHOME.icon2('running'), cls: 'r-go', title: '즉시 계단으로 대피하세요',
-      sub: '현재 대피 경로가 비교적 안전합니다. 신속하지만 침착하게 이동하세요.',
+      sub: '응답한 경로 상태를 기준으로 한 안내입니다. 이동 중 상황 변화와 현장 안내를 확인하세요.',
       summary: ['엘리베이터 금지, 계단 이용', '낮은 자세로 이동', '밖으로 나간 뒤 119에 위치 알림'],
       cards: [
         { type: 'safe', h: SAFEHOME.icon2('check') + ' 행동 요령', items: [
@@ -93,12 +67,12 @@
     },
     B: {
       icon: SAFEHOME.icon2('home'), cls: 'r-wait', title: '세대 내에서 대기하세요',
-      sub: '현재 밖으로 나가는 것이 위험합니다. 집 안에서 구조를 기다리세요.',
+      sub: '집 안으로 연기·화염이 들어오지 않는다는 응답 기준입니다. 방송과 화재 상황 변화를 계속 확인하세요.',
       summary: ['현관문·창문 틈 막기', '창문 쪽에서 구조 요청', '119에 동·호수와 세대 내 대기 알림'],
       cards: [
         { type: 'safe', h: SAFEHOME.icon2('check') + ' 행동 요령', items: [
           '현관문과 창문 틈을 젖은 수건으로 막아 연기 유입을 차단하세요',
-          '화장실(욕실)로 이동해 문을 닫고 물을 틀어 두세요',
+          '방문·창문을 닫고 연기 유입과 상황 변화를 확인하세요',
           '베란다나 창문 쪽에서 구조대에게 위치를 알리세요 (소리, 손전등, 밝은 천)',
           '낮은 자세를 유지하고 호흡을 안정시키세요'
         ]},

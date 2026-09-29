@@ -60,7 +60,19 @@
       ]
     }
   };
-  SAFEHOME.QUESTION_ORDER = ['q1', 'q2', 'q3', 'q5'];
+  SAFEHOME.QUESTIONS.q4 = {
+    id: 'q4', step: '4단계 · 이동 경로 확인', title: '이동할 경로의 상태를 알고 있습니까?',
+    sub: '확인을 위해 위험한 문을 열거나 이동하지 마세요. 알 수 없으면 미확인을 선택하세요.',
+    options: [
+      { value: '지상안전', emoji: SAFEHOME.icon2('check'), label: '지상까지 경로 확인', desc: '복도·계단에 연기·화염이 없고 이동 가능' },
+      { value: '옥상안전', emoji: SAFEHOME.icon2('building'), label: '옥상 경로만 확인', desc: '옥상까지 연기·화염이 없고 출입문 개방 확인' },
+      { value: '위험', emoji: SAFEHOME.icon2('alert'), label: '이동 경로가 위험함', desc: '연기·화염 또는 통행 장애가 있음' },
+      { value: '모름', emoji: SAFEHOME.icon2('help'), label: '확인하지 못함' }
+    ]
+  };
+  SAFEHOME.QUESTIONS.q5.step = '5단계 · 위치 관계 확인';
+  SAFEHOME.QUESTIONS.q3.options[0].desc = '현관 밖에 연기·화염이 없고 통과 가능';
+  SAFEHOME.QUESTION_ORDER = ['q1', 'q2', 'q3', 'q4', 'q5'];
 
   // ---------------------------------------------------------------------
   // 2. AFP-Core 항목 정의 (입주민 · 119가 즉시 쓰는 행동정보)
@@ -103,8 +115,8 @@
   // 건물 요약 문구 — 균일 격자(층수×세대/층) 데모 건물과, 실제 호수 목록을 그대로 들여온
   // 일괄 등록 건물(building.units) 모두를 자연스럽게 표시한다.
   SAFEHOME.buildingUnitSummary = function (b) {
-    if (b.units && b.units.length) return b.floors + '층 · 총 ' + b.units.length + '세대';
-    return b.floors + '층 · 세대당 ' + b.unitsPerFloor + '호';
+    if (b.units && b.units.length) return (b.floors == null ? '층수 미확인' : b.floors + '층') + ' · 총 ' + b.units.length + '세대';
+    return (b.floors == null ? '층수 미확인' : b.floors + '층') + ' · 층당 ' + b.unitsPerFloor + '세대';
   };
 
   function ynText(v, yes, no) {
@@ -264,6 +276,13 @@
     return normalizeAddr(s).replace(/동$/, '');
   }
   SAFEHOME.normalizeDong = normalizeDong;
+  SAFEHOME.normalizeHo = function (value) {
+    return String(value == null ? '' : value).trim().replace(/\s+/g, '').replace(/호$/, '');
+  };
+  SAFEHOME.unitFloor = function (value) {
+    var ho = SAFEHOME.normalizeHo(value);
+    return /^\d{3,5}$/.test(ho) ? Math.floor(Number(ho) / 100) : null;
+  };
 
   SAFEHOME.addrEquals = function (apt1, dong1, apt2, dong2) {
     return normalizeAddr(apt1) === normalizeAddr(apt2) && normalizeDong(dong1) === normalizeDong(dong2);
@@ -272,19 +291,14 @@
   // 입주민이 입력한 아파트명/동으로 등록된 건물을 찾는다. 실제 서비스라면 K-apt 단지코드 조회로 대체된다.
   SAFEHOME.findBuildingByAddress = function (apt, dong) {
     var na = normalizeAddr(apt), nd = normalizeDong(dong);
-    if (!na && !nd) return null;
+    if (!na || !nd) return null;
     var ids = Object.keys(SAFEHOME.BUILDINGS);
+    var matches = [];
     for (var i = 0; i < ids.length; i++) {
       var b = SAFEHOME.BUILDINGS[ids[i]];
-      if (normalizeAddr(b.apt) === na && normalizeDong(b.dong) === nd) return b;
+      if (normalizeAddr(b.apt) === na && normalizeDong(b.dong) === nd) matches.push(b);
     }
-    if (!nd) {
-      for (var j = 0; j < ids.length; j++) {
-        var b2 = SAFEHOME.BUILDINGS[ids[j]];
-        if (normalizeAddr(b2.apt) === na) return b2;
-      }
-    }
-    return null;
+    return matches.length === 1 ? matches[0] : null;
   };
 
   // 등록 건물이 대량(수백~수천 개 동)일 때 <select> 하나에 다 나열하면 찾기 힘들어서,
@@ -305,7 +319,7 @@
     if (!ids.length) return '<option value="">일치하는 아파트가 없습니다</option>';
     return '<option value="">동 선택</option>' + ids.map(function (id) {
       var b = SAFEHOME.BUILDINGS[id];
-      return '<option value="' + id + '"' + (selectedId === id ? ' selected' : '') + '>' + esc(b.apt) + ' ' + esc(b.dong) + '동 (' + SAFEHOME.buildingUnitSummary(b) + ')</option>';
+      return '<option value="' + esc(id) + '"' + (selectedId === id ? ' selected' : '') + '>' + esc(b.apt) + ' ' + esc(b.dong) + '동 · ' + esc(b.address || b.complexCode || '데모') + ' (' + SAFEHOME.buildingUnitSummary(b) + ')</option>';
     }).join('');
   }
   SAFEHOME.buildingSelectOptionsHtml = buildingSelectOptionsHtml;
@@ -328,8 +342,8 @@
       urgency: ho === fireOriginHo ? 'critical' : null,
       notes: [],
       updatedAt: null,
-      occupants: (Math.random() > 0.7) ? 2 : 1,
-      hasVulnerable: Math.random() > 0.85 // 고령자/영유아 등 거동취약자 여부(데모용 랜덤)
+      occupants: null,
+      hasVulnerable: null
     };
   }
 
@@ -339,7 +353,8 @@
     // 있으면 그걸 그대로 쓰고, 없으면(데모 건물) 기존 균일 격자(층수×세대/층) 방식으로 생성한다.
     if (building.units && building.units.length) {
       building.units.forEach(function (ho) {
-        var floor = parseInt(ho.length > 2 ? ho.slice(0, -2) : ho, 10) || 0;
+        ho = SAFEHOME.normalizeHo(ho);
+        var floor = SAFEHOME.unitFloor(ho);
         var unitIndex = parseInt(ho.slice(-2), 10) || 0;
         units[ho] = makeUnitRecord(ho, floor, unitIndex, fireOriginHo);
       });
@@ -358,9 +373,9 @@
   // 세대 상태 정의 (Live Occupancy Status)
   SAFEHOME.STATUS_META = {
     unresponded: { label: '미응답', color: '#9AA0A6', desc: '아직 응답이 없는 세대', icon: SAFEHOME.icon2('help') },
-    waiting: { label: '대피공간 · 세대 내 대기', color: '#1565C0', desc: '실내 대기 중', icon: SAFEHOME.icon2('home') },
-    moving: { label: '피난구 이용 · 이동 중', color: '#F0A500', desc: '대체 대피시설로 이동 중', icon: SAFEHOME.icon2('running') },
-    danger: { label: '연기 유입 · 대피 불가', color: '#D7263D', desc: '즉시 구조가 필요한 상태', icon: SAFEHOME.icon2('alert') },
+    waiting: { label: '세대 내 대기', color: '#1565C0', desc: '실내 대기 상태 · 별도 대피공간 설치 여부 확인', icon: SAFEHOME.icon2('home') },
+    moving: { label: '이동 중', color: '#F0A500', desc: '이동 경로와 도착 여부 확인 필요', icon: SAFEHOME.icon2('running') },
+    danger: { label: '위험 · 구조 필요 확인', color: '#D7263D', desc: '화점 또는 위험 신고 · 현장 상태 확인 필요', icon: SAFEHOME.icon2('alert') },
     safe: { label: '대피 완료', color: '#2E7D32', desc: '안전하게 대피 완료', icon: SAFEHOME.icon2('check') }
   };
 

@@ -421,7 +421,7 @@ def main():
                 dong = str(u.get(dong_key, "")).strip()
                 ho = str(u.get(ho_key, "")).strip()
                 if dong and ho:
-                    rows.append({"apt": apt_name, "dong": dong, "ho": ho})
+                    rows.append({"apt": apt_name, "dong": dong, "ho": ho, "complexCode": kapt_code, "address": addr_text})
                     found += 1
             if found:
                 print(f"    ✓ {apt_name}: {found}세대")

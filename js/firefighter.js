@@ -36,6 +36,7 @@
   }
 
   function resolveIncident() {
+    if (SAFEHOME.urlIncidentId) { var pinned = SAFEHOME.store.getIncident(SAFEHOME.urlIncidentId); return pinned && !pinned.closed && Date.now() <= pinned.firefighterLinkExp ? pinned : null; }
     var open = openIncidents();
     if (!open.length) return null;
     if (selectedIncidentId && open.some(function (i) { return i.id === selectedIncidentId; })) {
@@ -55,10 +56,10 @@
   }
 
   function incidentTabsHtml(open, active) {
-    if (open.length <= 1) return '';
+    if (SAFEHOME.urlIncidentId || open.length <= 1) return '';
     var tabs = open.map(function (inc) {
       var urgentCount = SAFEHOME.store.getUnits(inc.id).filter(function (u) { return u.status === 'danger'; }).length;
-      return '<button class="incident-tab' + (active && active.id === inc.id ? ' active' : '') + '" data-select-incident="' + inc.id + '">' +
+      return '<button class="incident-tab' + (active && active.id === inc.id ? ' active' : '') + '" data-select-incident="' + esc(inc.id) + '">' +
         esc(inc.apt) + ' ' + esc(inc.dong) + '동' + (urgentCount ? ' <span class="badge">' + urgentCount + '</span>' : '') +
       '</button>';
     }).join('');
@@ -78,12 +79,12 @@
           '<div class="dash-sub">대기 중</div>' +
         '</div>' +
         '<div class="panel">' +
-          '<div class="empty-note">' + SAFEHOME.icon2('clock') + ' 119 상황실에서 아직 사건 위치를 확정하지 않았습니다.<br>위치가 확정되면 건물 특이사항과 세대 현황이 여기에 표시됩니다.</div>' +
+          '<div class="empty-note">' + SAFEHOME.icon2('clock') + ' 관리자가 사건을 확정하지 않았거나 지정 사건을 사용할 수 없습니다.<br>위치가 확정되면 건물 특이사항과 세대 현황이 여기에 표시됩니다.</div>' +
         '</div>';
       return;
     }
 
-    var building = SAFEHOME.store.getEffectiveBuilding(active.buildingId);
+    var building = SAFEHOME.store.getIncidentBuilding(active.id);
     var units = SAFEHOME.store.getUnits(active.id);
     if (selectedHo && !units.some(function (u) { return u.ho === selectedHo; })) selectedHo = null;
     if (!selectedHo) {
@@ -100,6 +101,7 @@
       '</div>' +
       incidentTabsHtml(open, active) +
       (active.dispatchNote ? '<div class="panel" style="border-color:#FFD180;background:#FFFBF2;"><h3 class="panel-title">' + SAFEHOME.icon2('note') + ' 119 상황실 메모</h3><div style="font-size:13.5px;line-height:1.6;white-space:pre-line;">' + esc(active.dispatchNote) + '</div></div>' : '') +
+      (active.dispatchNote ? '<button class="utility-btn" id="ff-ack-note">' + (active.noteAcknowledgedAt ? '메모 확인 완료' : '메모 수신 확인') + '</button>' : '') +
       ffStatBarHtml(counts) +
       recentFeedPanelHtml(units) +
       casualtyPanelHtml(active.casualties) +
@@ -118,6 +120,8 @@
         '<div class="panel">' + unitDetailHtml(selectedHo, active, building) + '</div>' +
       '</div>';
 
+    var ack = document.getElementById('ff-ack-note');
+    if (ack) ack.onclick = function(){ SAFEHOME.store.acknowledgeNote(active.id); };
     root.querySelectorAll('[data-select-incident]').forEach(function (el) {
       el.onclick = function () {
         selectedIncidentId = el.getAttribute('data-select-incident');
@@ -139,7 +143,7 @@
       el.onclick = function () {
         var ho = el.getAttribute('data-ho');
         var action = el.getAttribute('data-action');
-        SAFEHOME.store.firefighterSetStatus(ho, action, active.id);
+        if (!SAFEHOME.store.firefighterSetStatus(ho, action, active.id)) return;
         SAFEHOME.toast(ho + '호 상태를 "' + SAFEHOME.STATUS_META[action].label + '"(으)로 갱신했습니다.');
       };
     });
@@ -154,7 +158,7 @@
   }
 
   function radioBtnHtml() {
-    return '<a class="radio-btn" href="tel:119">' + SAFEHOME.icon2('phone') + ' 119 무전 연결</a>';
+    return '<a class="radio-btn" href="tel:119">' + SAFEHOME.icon2('phone') + ' 119 전화</a>';
   }
 
   function countStatuses(units) {
@@ -194,9 +198,9 @@
     var body = recent.length
       ? '<div class="ff-feed">' + recent.map(function (u) {
           var m = SAFEHOME.STATUS_META[u.status];
-          return '<button class="ff-feed-item" data-select-ho="' + u.ho + '">' +
+          return '<button class="ff-feed-item" data-select-ho="' + esc(u.ho) + '">' +
             '<span class="ff-feed-icon">' + m.icon + '</span>' +
-            '<span class="ff-feed-ho">' + u.ho + '호</span>' +
+            '<span class="ff-feed-ho">' + esc(u.ho) + '호</span>' +
             '<span class="ff-feed-label" style="color:' + m.color + ';">' + m.label + '</span>' +
             '<span class="ff-feed-time">' + SAFEHOME.fmtTime(u.updatedAt) + '</span>' +
           '</button>';
@@ -269,16 +273,16 @@
     var meta = SAFEHOME.STATUS_META[u.status];
     var res = SAFEHOME.RESULTS[u.resultKey];
     var isDuplex = building.search.duplexUnits.indexOf(u.ho) !== -1;
-    return '<h3 class="panel-title">' + SAFEHOME.icon2('note') + ' ' + (u.isFireOrigin ? SAFEHOME.icon2('flame') + ' ' : '') + ho + '호' + (isDuplex ? ' 🪜' : '') + ' 상세 <span style="color:' + meta.color + ';font-size:12.5px;">' + meta.label + '</span></h3>' +
-      (u.hasVulnerable ? '<div class="tag-warn">' + SAFEHOME.icon2('alert') + ' 거동 불편자 있음 · ' + u.occupants + '인 세대</div>' : '<div class="tag-info">' + u.occupants + '인 세대</div>') +
+    return '<h3 class="panel-title">' + SAFEHOME.icon2('note') + ' ' + (u.isFireOrigin ? SAFEHOME.icon2('flame') + ' ' : '') + esc(ho) + '호' + (isDuplex ? ' 🪜' : '') + ' 상세 <span style="color:' + meta.color + ';font-size:12.5px;">' + meta.label + '</span></h3>' +
+      '<div class="tag-info">' + esc(SAFEHOME.occupantsText(u)) + '</div>' + SAFEHOME.reviewHtml(u) +
       (res ? '<div class="ff-plan">' + SAFEHOME.icon2('note') + ' 입주민 안내: ' + res.icon + ' ' + esc(res.title) + '</div>' : '<div class="ff-plan">' + SAFEHOME.icon2('note') + ' 아직 대피 판정 없음 · 직접 확인 필요</div>') +
       '<div class="ff-actions">' +
-        '<button data-action="safe" data-ho="' + u.ho + '" class="safe">' + SAFEHOME.STATUS_META.safe.icon + ' 구조 완료<small>현황판 녹색 반영</small></button>' +
-        '<button data-action="moving" data-ho="' + u.ho + '">' + SAFEHOME.STATUS_META.moving.icon + ' 이동 유도 중<small>대체 대피시설로 안내</small></button>' +
-        '<button data-action="danger" data-ho="' + u.ho + '" class="danger">' + SAFEHOME.STATUS_META.danger.icon + ' 위험 재확인<small>연기유입·대피불가</small></button>' +
-        '<button data-action="unresponded" data-ho="' + u.ho + '" class="muted">' + SAFEHOME.STATUS_META.unresponded.icon + ' 연락 두절<small>응답 없음으로 표시</small></button>' +
+        '<button data-action="safe" data-ho="' + esc(u.ho) + '" class="safe">' + SAFEHOME.STATUS_META.safe.icon + ' 구조 완료<small>현황판 녹색 반영</small></button>' +
+        '<button data-action="moving" data-ho="' + esc(u.ho) + '">' + SAFEHOME.STATUS_META.moving.icon + ' 이동 유도 중<small>대체 대피시설로 안내</small></button>' +
+        '<button data-action="danger" data-ho="' + esc(u.ho) + '" class="danger">' + SAFEHOME.STATUS_META.danger.icon + ' 위험 재확인<small>연기유입·대피불가</small></button>' +
+        '<button data-action="unresponded" data-ho="' + esc(u.ho) + '" class="muted">' + SAFEHOME.STATUS_META.unresponded.icon + ' 연락 두절<small>응답 없음으로 표시</small></button>' +
       '</div>' +
-      '<div class="ff-floorplan-box">' + SAFEHOME.renderUnitFloorplan(SAFEHOME.store.getEffectiveAfp(u, building.core), isDuplex) + '</div>';
+      '<div class="ff-floorplan-box">' + SAFEHOME.renderUnitFloorplan(SAFEHOME.store.getEffectiveAfp(u, incident.afp), isDuplex) + '</div>';
   }
 
   SAFEHOME.Firefighter = { mount: mount, unmount: unmount };

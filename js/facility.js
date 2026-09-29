@@ -53,8 +53,13 @@
           facilityFieldsHtml(SAFEHOME.AFP_SUPPRESSION_FIELDS, building.suppression, 'suppression') +
         '</div>' +
 
+        '<div class="home-box"><h3>점검 근거</h3><label class="field-label">점검자<input id="fc-inspector" value="' + esc((ov[buildingId] || {}).inspector || '') + '"></label><label class="field-label">근거·확인 방법<textarea id="fc-evidence">' + esc((ov[buildingId] || {}).evidence || '') + '</textarea></label></div>' +
+        '<div class="home-box"><h3>건물 특화 구조</h3>' + Object.keys(SAFEHOME.makeUnknownSearch()).map(function(key){
+          var labels = {hoistRoomStructure:'권상기실 구조',roofAccessRoute:'옥상 접근 경로',hiddenStairs:'숨은 계단',midFireDoors:'방화문',duplexUnits:'복층 호수 — 쉼표로 구분',duplexNote:'복층 설명',refugeAreaNote:'피난안전구역',basementNote:'지하 구조'};
+          return '<label class="field-label">' + labels[key] + '<textarea data-search-key="' + key + '">' + esc(Array.isArray(building.search[key]) ? building.search[key].join(',') : building.search[key]) + '</textarea></label>';
+        }).join('') + '</div>' +
         '<button class="start-btn" id="fc-save">저장</button>' +
-        '<div class="start-note">' + SAFEHOME.icon2('clock') + ' 저장 즉시 신규 사건·상황실·소방대원 화면에 반영됩니다</div>' +
+        '<div class="start-note">' + SAFEHOME.icon2('clock') + ' 새 사건부터 적용됩니다. 진행 사건은 확정 시점 정보와 세대 예외를 사용합니다.</div>' +
       '</div>';
 
     document.getElementById('fc-save').onclick = function () {
@@ -62,9 +67,16 @@
       root.querySelectorAll('[data-fc-group]').forEach(function (sel) {
         var group = sel.getAttribute('data-fc-group');
         var key = sel.getAttribute('data-fc-key');
-        patch[group][key] = sel.value === 'true';
+        patch[group][key] = sel.value === 'unknown' ? null : sel.value === 'true';
       });
-      SAFEHOME.store.setBuildingFacility(buildingId, patch);
+      patch.inspector = document.getElementById('fc-inspector').value;
+      patch.evidence = document.getElementById('fc-evidence').value; patch.search = {};
+      root.querySelectorAll('[data-search-key]').forEach(function(el){
+        var key = el.getAttribute('data-search-key');
+        patch.search[key] = key === 'duplexUnits' ? el.value.split(',').map(function(v){return v.trim();}).filter(Boolean) : el.value;
+      });
+      if (!patch.inspector.trim() || !patch.evidence.trim()) { SAFEHOME.toast('점검자와 확인 근거를 입력해주세요.'); return; }
+      if (!SAFEHOME.store.setBuildingFacility(buildingId, patch)) return;
       SAFEHOME.toast('소방시설 현황이 저장되었습니다.');
       render();
     };
@@ -72,11 +84,12 @@
 
   function facilityFieldsHtml(fields, current, group) {
     return '<div class="facility-grid">' + fields.map(function (f) {
-      var v = current[f.key] === true;
+      var v = current[f.key];
       return '<div class="facility-field"><label>' + f.icon + ' ' + esc(f.label) + '</label>' +
         '<select data-fc-group="' + group + '" data-fc-key="' + f.key + '">' +
-          '<option value="true"' + (v ? ' selected' : '') + '>' + esc(f.yes) + '</option>' +
-          '<option value="false"' + (!v ? ' selected' : '') + '>' + esc(f.no) + '</option>' +
+          '<option value="unknown"' + (v == null ? ' selected' : '') + '>확인 필요</option>' +
+          '<option value="true"' + (v === true ? ' selected' : '') + '>' + esc(f.yes) + '</option>' +
+          '<option value="false"' + (v === false ? ' selected' : '') + '>' + esc(f.no) + '</option>' +
         '</select></div>';
     }).join('') + '</div>';
   }

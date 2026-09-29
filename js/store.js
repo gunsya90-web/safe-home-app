@@ -1,464 +1,161 @@
-/* SAFE-HOME · store.js
-   입주민 / 119 상황실 / 소방대원 화면이 공유하는 중앙 상태 저장소.
-
-   핵심 원칙 1: 입주민이 신고 화면에서 입력하는 아파트명·동·호는 "본인이 말한 위치(자기 신고)"일 뿐,
-   그 자체가 곧바로 공식 사건 위치가 되지는 않는다. 신고는 우선 reports[]에 쌓이고,
-   119 상황실이 등록된 건물 디렉터리(BUILDINGS)에서 해당 동을 찾아 "사건 위치로 확정"해야
-   비로소 세대 현황판(units)과 건물 AFP 정보가 채워지고, 그 결과가 소방대원 화면에 노출된다.
-
-   핵심 원칙 2: 사건은 동시에 여러 건 존재할 수 있다(incidents는 목록). 상황실은 여러 확정된 사건을
-   전환하며 관리하고, 소방대원은 자신이 배정된 사건(또는 상황실이 지정한 사건)만 본다.
-   (실제 서비스에서는 이 계층이 서버 WebSocket/파이어베이스 등으로 대체된다.) */
-(function (SAFEHOME) {
-  'use strict';
-
-  var STORAGE_KEY = 'safehome_v4_state';
-  var listeners = new Set();
-  var channel = null;
-  try { channel = new BroadcastChannel('safehome-sync'); } catch (e) { channel = null; }
-
-  function reportKey(apt, dong, ho) {
-    return [apt || '', dong || '', ho || ''].join('|');
+/* SAFE-HOME v5: 사건별 기록, 탭별 선택, 저장 오류 보호. */
+(function (S) {
+'use strict';
+var KEY='safehome_v5_state', OLD='safehome_v4_state', listeners=new Set(), channel, error='', blocked=false, baseRaw=null;
+var staticBuildings=JSON.parse(JSON.stringify(S.BUILDINGS)), location={apt:'',dong:'',ho:'',buildingId:null}, activeId=null;
+var copy=function(x){return JSON.parse(JSON.stringify(x));}, has=function(x,k){return Object.prototype.hasOwnProperty.call(x,k);};
+function fresh(){return {schemaVersion:5,revision:0,incidents:{},reports:{},buildingOverrides:{},importedBuildings:{},actionLog:[],linkTtlHours:2,updatedAt:Date.now()};}
+function valid(x){return x && x.schemaVersion===5 && x.incidents && x.reports && x.importedBuildings && x.buildingOverrides && Array.isArray(x.actionLog);}
+function read(){
+ try {
+  baseRaw=localStorage.getItem(KEY);
+  if(baseRaw){var x=JSON.parse(baseRaw);if(!valid(x))throw Error();return x;}
+  var raw=localStorage.getItem(OLD);if(!raw)return fresh();
+  var old=JSON.parse(raw);if(!old || !old.incidents || !old.reports)throw Error();
+  localStorage.setItem(OLD+'_backup',raw);
+  var next=Object.assign(fresh(),old,{schemaVersion:5,revision:0});delete next.location;delete next.activeIncidentId;
+  Object.values(next.incidents).forEach(function(i){i.closed=true;i.closedAt=i.closedAt||Date.now();i.migrated=true;Object.values(i.units||{}).forEach(function(u){u.occupants=null;u.hasVulnerable=null;});});
+  Object.values(next.reports).forEach(function(r){r.archived=true;r.migrated=true;});
+  next.actionLog.unshift({at:Date.now(),actor:'시스템',action:'이전 기록 백업·이력 전환. 진행 사건은 새로 확인해주세요.'});
+  baseRaw=JSON.stringify(next);localStorage.setItem(KEY,baseRaw);return next;
+ }catch(e){blocked=true;error='저장 기록을 읽을 수 없습니다. 원본은 보존했습니다. 관리자에서 백업 후 복구해주세요.';return fresh();}
+}
+var state=read(), snapshot=copy(state);
+function rebuild(){S.BUILDINGS=Object.assign({},copy(staticBuildings),state.importedBuildings);}
+rebuild();
+function notify(){listeners.forEach(function(fn){try{fn(state);}catch(e){console.error(e);}});}
+function fail(message){error=message;notify();return false;}
+function commit(){
+ try{
+  if(blocked)throw Error(error);
+  if(localStorage.getItem(KEY)!==baseRaw)throw Error('다른 탭에서 기록을 변경했습니다. 새로고침 후 다시 시도해주세요.');
+  state.revision=(state.revision||0)+1;state.updatedAt=Date.now();
+  var raw=JSON.stringify(state);localStorage.setItem(KEY,raw);baseRaw=raw;snapshot=copy(state);error='';rebuild();notify();
+ }catch(e){state=copy(snapshot);rebuild();return fail(/다른 탭|원본/.test(e.message)?e.message:'저장하지 못했습니다. 공간 또는 저장소 접근을 확인해주세요.');}
+ if(channel){try{channel.postMessage({revision:state.revision});}catch(e){}}
+ return true;
+}
+function reload(){
+ try{var raw=localStorage.getItem(KEY);if(raw===baseRaw)return;if(!raw)return fail('다른 탭에서 기록이 삭제되었습니다. 새로고침해주세요.');
+ var x=JSON.parse(raw);if(!valid(x))throw Error();state=x;snapshot=copy(x);baseRaw=raw;error='';rebuild();notify();
+ }catch(e){fail('다른 탭의 기록을 읽지 못했습니다. 현재 기록을 유지합니다.');}
+}
+window.addEventListener('storage',function(e){if(e.key===KEY)reload();});
+try{channel=new BroadcastChannel('safehome-v5');channel.onmessage=reload;}catch(e){}
+function log(actor,action,id){state.actionLog.unshift({actor:actor,action:action,incidentId:id||null,at:Date.now()});}
+function incident(id){return id && has(state.incidents,id)?state.incidents[id]:null;}
+function selected(id){return incident(id===undefined?activeId:id);}
+function writable(id){var i=selected(id);if(!i||i.closed){fail('대상 사건이 없거나 종료되었습니다. 다른 사건에는 반영하지 않았습니다.');return null;}return i;}
+function uid(){return window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);}
+function norm(x){return {apt:String(x.apt||'').trim(),dong:S.normalizeDong(x.dong),ho:S.normalizeHo(x.ho),buildingId:x.buildingId||null};}
+function buildingFor(x){if(x.buildingId){var b=S.BUILDINGS[x.buildingId];return b&&S.addrEquals(x.apt,x.dong,b.apt,b.dong)?b:null;}return S.findBuildingByAddress(x.apt,x.dong);}
+function findOpen(id){return Object.values(state.incidents).find(function(i){return !i.closed&&i.buildingId===id;})||null;}
+function target(x,id){if(id){var i=incident(id);return i&&!i.closed&&S.addrEquals(x.apt,x.dong,i.apt,i.dong)&&(!x.buildingId||x.buildingId===i.buildingId)?i:null;}var b=buildingFor(x);return b?findOpen(b.id):null;}
+function reportKey(apt,dong,ho,id,bid){return JSON.stringify([id||'pending',bid||S.normalizeAddr(apt),S.normalizeDong(dong),S.normalizeHo(ho)]);}
+S.reportKey=reportKey;
+function unit(i,ho){return i&&has(i.units,S.normalizeHo(ho))?i.units[S.normalizeHo(ho)]:null;}
+function fromResult(k){return ({A:'moving',B:'waiting',C:'waiting',D:'moving',E:'moving',F:'danger',G:'moving'})[k]||'unresponded';}
+function applyReport(r,i){
+ var u=unit(i,r.ho);if(!u)return false;
+ Object.assign(u,{answers:copy(r.answers||{}),resultKey:r.resultKey,urgency:r.urgency,notes:r.notes||[],occupants:r.occupants,hasVulnerable:r.hasVulnerable,reportedStatus:r.status,reportedAt:r.updatedAt,updatedAt:r.updatedAt});
+ if(u.fieldStatus){u.needsReview=u.fieldStatus!==r.status;u.status=u.needsReview&&(r.urgency==='critical'||r.status==='danger')?'danger':u.fieldStatus;}
+ else u.status=u.isFireOrigin&&r.status!=='safe'?'danger':r.status;
+ r.matchedIncidentId=r.incidentId=i.id;r.buildingId=i.buildingId;return true;
+}
+function reportAt(apt,dong,ho,id,bid){
+ var x=norm({apt:apt,dong:dong,ho:ho,buildingId:bid}), i=target(x,id);if(id&&!i)return null;
+ return Object.values(state.reports).find(function(r){return !r.archived&&(r.incidentId||null)===(i?i.id:null)&&(!bid||r.buildingId===bid)&&S.addrEquals(r.apt,r.dong,x.apt,x.dong)&&r.ho===x.ho;})||null;
+}
+function tri(p,fields){var x={};fields.forEach(function(f){if(has(p||{},f.key)&&[true,false,null].indexOf(p[f.key])>=0)x[f.key]=p[f.key];});return x;}
+var store={
+ getState:function(){return Object.assign({},state,{location:copy(location),activeIncidentId:activeId});},
+ getError:function(){return error;},
+ subscribe:function(fn){listeners.add(fn);return function(){listeners.delete(fn);};},
+ exportBackup:function(){return JSON.stringify({current:state,legacy:localStorage.getItem(OLD),raw:localStorage.getItem(KEY)},null,2);},
+ restoreBackup:function(text){
+  try {
+   var backup=JSON.parse(text), next=backup.current||backup;
+   if(!valid(next))return fail('이 버전에서 복구 가능한 SAFE-HOME 백업이 아닙니다.');
+   var previous=localStorage.getItem(KEY);
+   if(previous)localStorage.setItem(KEY+'_before_restore_'+Date.now(),previous);
+   var wasBlocked=blocked;
+   baseRaw=previous;state=copy(next);blocked=false;
+   log('관리자','백업 복구 — 이전 원본 별도 보존');
+   var restored=commit();if(!restored)blocked=wasBlocked;return restored;
+  }catch(e){return fail('백업을 읽거나 원본을 보관하지 못했습니다. 현재 기록을 유지합니다.');}
+ },
+ setLocation:function(x){location=norm(Object.assign({},location,x));notify();return true;},
+ getEffectiveBuilding:function(id){var b=S.BUILDINGS[id];if(!b)return null;var o=state.buildingOverrides[id]||{};return Object.assign({},b,{core:Object.assign({},b.core,o.core),suppression:Object.assign({},b.suppression,o.suppression),search:Object.assign({},b.search,o.search),facilityVersion:o.updatedAt||b.importedAt||0});},
+ getIncidentBuilding:function(id){var i=incident(id);return i?(i.buildingSnapshot||store.getEffectiveBuilding(i.buildingId)):null;},
+ getAfpForAddress:function(apt,dong,ho,id,bid){var x=norm({apt:apt,dong:dong,ho:ho,buildingId:bid}),i=target(x,id);if(id&&!i)return {};if(i)return store.getEffectiveAfp(unit(i,ho),i.afp);var b=buildingFor(x);return b?store.getEffectiveBuilding(b.id).core:{};},
+ getEffectiveAfp:function(u,a){return Object.assign({},a,u&&u.afpOverride||{});},
+ submitReport:function(p){
+  var x=norm(p),i=target(x,p.incidentId);
+  if(!x.apt||!x.dong||!x.ho)return fail('아파트·동·호수를 확인해주세요. 신고는 저장하지 않았습니다.');
+  if(p.incidentId&&!i)return fail('신고 대상 사건이 유효하지 않습니다.');
+  if(i&&Date.now()>i.residentLinkExp)return fail('입주민 링크가 만료되었습니다.');
+  if(i&&!unit(i,x.ho))return fail('등록된 세대가 아닙니다. 호수를 확인해주세요.');
+  var b=buildingFor(x),existing=reportAt(x.apt,x.dong,x.ho,i&&i.id,b&&b.id);
+  var key=existing?existing.key:reportKey(x.apt,x.dong,x.ho,i&&i.id,b&&b.id),old=state.reports[key];
+  var r=Object.assign({},x,{key:key,buildingId:b&&b.id||null,incidentId:i&&i.id||null,matchedIncidentId:null,answers:copy(p.answers||{}),resultKey:p.resultKey,urgency:p.urgency,notes:p.notes||[],status:fromResult(p.resultKey),
+   occupants:Number.isInteger(p.occupants)&&p.occupants>0?p.occupants:null,hasVulnerable:typeof p.hasVulnerable==='boolean'?p.hasVulnerable:null,
+   ruleVersion:S.RULE_VERSION,facilityVersion:i?i.facilityVersion:(b?store.getEffectiveBuilding(b.id).facilityVersion:null),
+   previous:old?(old.previous||[]).concat([{at:old.updatedAt,status:old.status,resultKey:old.resultKey}]):[],updatedAt:Date.now(),auto:false});
+  state.reports[key]=r;if(i)applyReport(r,i);log('입주민',x.ho+'호 상태 접수',i&&i.id);return commit()?key:false;
+ },
+ getReport:function(k){return state.reports[k]||null;},getReportByAddress:reportAt,
+ getPendingReports:function(){return Object.values(state.reports).filter(function(r){return !r.archived&&!r.incidentId&&!r.matchedIncidentId;}).sort(function(a,b){return b.updatedAt-a.updatedAt;});},
+ markSafeByAddress:function(apt,dong,ho,id,bid){var r=reportAt(apt,dong,ho,id,bid);if(!r)return fail('해당 사건의 신고가 없습니다.');var i=r.incidentId?writable(r.incidentId):null;if(r.incidentId&&(!i||Date.now()>i.residentLinkExp))return fail('사건이 종료되었거나 링크가 만료되었습니다.');r.status='safe';r.updatedAt=Date.now();if(i)applyReport(r,i);log('입주민',S.normalizeHo(ho)+'호 대피 완료',r.incidentId);return commit();},
+ getActionLog:function(){return state.actionLog;},
+ setBuildingFacility:function(id,p){
+  if(!S.BUILDINGS[id])return fail('등록 건물을 찾지 못했습니다.');var o=state.buildingOverrides[id]||{},search=Object.assign({},o.search);
+  Object.keys(S.makeUnknownSearch()).forEach(function(k){if(p.search&&has(p.search,k))search[k]=k==='duplexUnits'?p.search[k].map(S.normalizeHo):String(p.search[k]).slice(0,2000);});
+  state.buildingOverrides[id]={core:Object.assign({},o.core,tri(p.core,S.AFP_CORE_FIELDS)),suppression:Object.assign({},o.suppression,tri(p.suppression,S.AFP_SUPPRESSION_FIELDS)),search:search,inspector:String(p.inspector||'').trim(),evidence:String(p.evidence||'').trim(),updatedAt:Date.now()};
+  log('시설 점검',S.BUILDINGS[id].apt+' '+S.BUILDINGS[id].dong+'동 시설·구조 정보 갱신');return commit();
+ },
+ registerBuildings:function(rows){
+  var groups=Object.create(null),added=0,updated=0;
+  for(var r of rows||[]){
+   var x=norm(r),code=String(r.complexCode||'').trim(),address=String(r.address||'').trim();var scope=code?'code:'+code:address?'address:'+address:'';if(!x.apt||!x.dong||!x.ho||!scope)return fail('각 행에 아파트명·동·호·단지코드 또는 주소가 필요합니다.');
+   var id='imp-'+encodeURIComponent(JSON.stringify([scope,x.dong]));
+   if(!groups[id])groups[id]={id:id,apt:x.apt,dong:x.dong,complexCode:String(r.complexCode||''),address:String(r.address||''),units:[]};
+   if(groups[id].apt!==x.apt)return fail('같은 단지코드에 다른 아파트명이 있습니다. 원본을 확인해주세요.');
+   if(groups[id].units.indexOf(x.ho)<0)groups[id].units.push(x.ho);
   }
-  SAFEHOME.reportKey = reportKey;
-
-  function statusFromResultKey(key, isFireOrigin) {
-    if (isFireOrigin) return 'danger';
-    switch (key) {
-      case 'A': return 'moving';   // 계단 대피 중
-      case 'B': return 'waiting';  // 세대 내 대기
-      case 'C': return 'waiting';  // 대피공간 대기
-      case 'D': return 'moving';   // 하향식 피난구 이동 중
-      case 'E': return 'moving';   // 경량칸막이 이동 중
-      case 'G': return 'moving';   // 옥상 이동 중
-      case 'F': return 'danger';   // 구조 필요
-      default: return 'waiting';
-    }
-  }
-
-  function newIncidentId() {
-    return 'inc-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-  }
-
-  function makeCasualties() {
-    return { dead: 0, severe: 0, minor: 0, guided: 0, selfEvacuated: 0 };
-  }
-
-  function ttlMs() { return (state.linkTtlHours || 2) * 3600000; }
-
-  function makeIncident(building, officialHo) {
-    var now = Date.now();
-    return {
-      id: newIncidentId(),
-      buildingId: building.id, apt: building.apt, dong: building.dong,
-      officialHo: officialHo || null, confirmedAt: now, closed: false,
-      units: SAFEHOME.generateUnits(building, officialHo || null),
-      afp: Object.assign({}, building.core),
-      dispatchNote: '',
-      casualties: makeCasualties(),
-      // 보안: 상황실이 발급하는 링크는 기본 2시간 후 만료된다(관리자가 조정 가능). 링크 재발급 시 갱신된다.
-      residentLinkExp: now + ttlMs(),
-      firefighterLinkExp: now + ttlMs()
-    };
-  }
-
-  function defaultState() {
-    // 데모 시연을 위해 "자동화재탐지설비 신호"로 들어온 최초 미확정 신고 1건을 미리 채워둔다.
-    var seedKey = reportKey('행복아파트', '101', SAFEHOME.DEFAULT_FIRE_ORIGIN_HO);
-    var seedReports = {};
-    seedReports[seedKey] = {
-      key: seedKey, apt: '행복아파트', dong: '101', ho: SAFEHOME.DEFAULT_FIRE_ORIGIN_HO,
-      answers: null, resultKey: null, urgency: 'critical',
-      notes: ['자동화재탐지설비(스프링클러) 작동 신호 수신 — 입주민 미신고'],
-      status: 'danger', occupants: 2, hasVulnerable: true,
-      matchedIncidentId: null, auto: true, updatedAt: Date.now()
-    };
-
-    return {
-      incidents: {},
-      activeIncidentId: null,
-      reports: seedReports,
-      location: { apt: '', dong: '', ho: '' },
-      buildingOverrides: {},
-      importedBuildings: {},
-      actionLog: [],
-      linkTtlHours: 2, // 상황실 발급 링크의 기본 유효시간(시간) — 상황실에서 조정 가능
-      updatedAt: Date.now()
-    };
-  }
-
-  function load() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        var parsed = JSON.parse(raw);
-        if (parsed && parsed.incidents && parsed.reports) return parsed;
-      }
-    } catch (e) { /* 저장된 값이 없거나 손상된 경우 기본값 사용 */ }
-    return defaultState();
-  }
-
-  // 일괄 등록(수입)된 건물은 SAFEHOME.BUILDINGS(정적 목업 디렉터리)에 그대로 병합해서,
-  // findBuildingByAddress/관리자 건물 목록 등 기존 코드를 하나도 바꾸지 않고 그대로 인식하게 한다.
-  function applyImportedBuildings() {
-    var imported = state.importedBuildings || {};
-    Object.keys(imported).forEach(function (id) { SAFEHOME.BUILDINGS[id] = imported[id]; });
-  }
-
-  var state = load();
-  applyImportedBuildings();
-
-  function persist() {
-    state.updatedAt = Date.now();
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* 용량 초과 등은 무시 */ }
-  }
-
-  function notify() {
-    listeners.forEach(function (fn) {
-      try { fn(state); } catch (e) { console.error('[SAFE-HOME store listener]', e); }
-    });
-  }
-
-  function commit() {
-    persist();
-    notify();
-    if (channel) { try { channel.postMessage({ type: 'sync', at: state.updatedAt }); } catch (e) {} }
-  }
-
-  window.addEventListener('storage', function (e) {
-    if (e.key === STORAGE_KEY && e.newValue) {
-      try { state = JSON.parse(e.newValue); applyImportedBuildings(); notify(); } catch (err) { /* 무시 */ }
-    }
-  });
-  if (channel) {
-    channel.onmessage = function () { state = load(); applyImportedBuildings(); notify(); };
-  }
-
-  function logAction(actor, action) {
-    state.actionLog = state.actionLog || [];
-    state.actionLog.unshift({ actor: actor, action: action, at: Date.now() });
-    if (state.actionLog.length > 200) state.actionLog.length = 200;
-  }
-
-  function getIncident(id) { return id ? state.incidents[id] : null; }
-  function activeIncident() { return getIncident(state.activeIncidentId); }
-
-  function ensureUnit(incident, ho, isFireOrigin) {
-    if (!incident.units[ho]) {
-      var floor = parseInt(ho.length > 2 ? ho.slice(0, -2) : ho, 10) || 0;
-      incident.units[ho] = {
-        ho: ho, floor: floor, unitIndex: 0, isFireOrigin: !!isFireOrigin,
-        status: isFireOrigin ? 'danger' : 'unresponded',
-        resultKey: null, answers: null, urgency: isFireOrigin ? 'critical' : null, notes: [], updatedAt: null,
-        occupants: 1, hasVulnerable: false
-      };
-    }
-    return incident.units[ho];
-  }
-
-  // 신고 하나를, 주소가 일치하는 확정된 사건(있다면)에 반영한다.
-  // 여러 사건이 동시에 열려 있을 수 있으므로 apt+dong이 일치하는 첫 번째 사건을 찾는다.
-  function syncReportToIncident(key) {
-    var r = state.reports[key];
-    if (!r) return;
-    var matchedId = null;
-    Object.keys(state.incidents).forEach(function (id) {
-      if (matchedId) return;
-      var inc = state.incidents[id];
-      if (!inc.closed && SAFEHOME.addrEquals(r.apt, r.dong, inc.apt, inc.dong) && r.ho) matchedId = id;
-    });
-    r.matchedIncidentId = matchedId;
-    if (!matchedId) return;
-    var inc = state.incidents[matchedId];
-    var unit = ensureUnit(inc, r.ho, r.ho === inc.officialHo);
-    unit.answers = r.answers;
-    unit.resultKey = r.resultKey;
-    unit.urgency = r.urgency;
-    unit.notes = r.notes || [];
-    unit.occupants = r.occupants;
-    unit.hasVulnerable = r.hasVulnerable;
-    unit.updatedAt = r.updatedAt;
-    unit.status = unit.isFireOrigin ? (r.status === 'safe' ? 'safe' : 'danger') : r.status;
-  }
-
-  function resyncAllReports() {
-    Object.keys(state.reports).forEach(syncReportToIncident);
-  }
-
-  var store = {
-    getState: function () { return state; },
-
-    subscribe: function (fn) {
-      listeners.add(fn);
-      return function unsubscribe() { listeners.delete(fn); };
-    },
-
-    // ---------------- 입주민 ----------------
-    setLocation: function (loc) {
-      state.location = Object.assign({}, state.location, loc);
-      commit();
-    },
-
-    // 입주민이 보는 "우리집" 기준 AFP는 그 주소와 일치하는 사건이 있으면 그 사건 값을, 없으면 건물 등록정보 기본값을 쓴다.
-    // (입주민 화면은 store.setAfp를 직접 호출하지 않고, 결과 계산 시 이 값을 그대로 넘겨받아 쓴다.)
-    getAfpForAddress: function (apt, dong) {
-      var found = null;
-      Object.keys(state.incidents).forEach(function (id) {
-        var inc = state.incidents[id];
-        if (!found && SAFEHOME.addrEquals(apt, dong, inc.apt, inc.dong)) found = inc.afp;
-      });
-      if (found) return found;
-      var building = SAFEHOME.findBuildingByAddress(apt, dong);
-      return building ? store.getEffectiveBuilding(building.id).core : {};
-    },
-
-    // 입주민의 신고/진행상황 제출. 등록된 사건과 주소가 일치할 때만 세대 현황판에 반영된다.
-    submitReport: function (payload) {
-      var key = reportKey(payload.apt, payload.dong, payload.ho);
-      var existing = state.reports[key];
-      var occupants = (existing && existing.occupants) || payload.occupants || ((Math.random() > 0.7) ? 2 : 1);
-      var hasVulnerable = existing && existing.hasVulnerable !== undefined
-        ? existing.hasVulnerable
-        : (payload.hasVulnerable !== undefined ? payload.hasVulnerable : Math.random() > 0.85);
-      state.reports[key] = {
-        key: key, apt: payload.apt, dong: payload.dong, ho: payload.ho,
-        answers: payload.answers, resultKey: payload.resultKey, urgency: payload.urgency, notes: payload.notes || [],
-        status: statusFromResultKey(payload.resultKey, false),
-        occupants: occupants, hasVulnerable: hasVulnerable,
-        matchedIncidentId: null, auto: false, updatedAt: Date.now()
-      };
-      syncReportToIncident(key);
-      commit();
-      return key;
-    },
-
-    getReport: function (key) { return state.reports[key]; },
-    getReportByAddress: function (apt, dong, ho) { return state.reports[reportKey(apt, dong, ho)]; },
-
-    getPendingReports: function () {
-      return Object.keys(state.reports).map(function (k) { return state.reports[k]; })
-        .filter(function (r) { return !r.matchedIncidentId; })
-        .sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
-    },
-
-    // 신고자 자신이 "대피 완료"를 눌렀을 때 — 확정 여부와 무관하게 항상 동작해야 한다.
-    markSafeByAddress: function (apt, dong, ho) {
-      var key = reportKey(apt, dong, ho);
-      var r = state.reports[key];
-      if (r) { r.status = 'safe'; r.updatedAt = Date.now(); syncReportToIncident(key); }
-      logAction('입주민', ho + '호 대피 완료 알림');
-      commit();
-    },
-
-    getActionLog: function () { return state.actionLog || []; },
-
-    // ---------------- 소방시설 점검 (관리자 발급 링크로 접근하는 건물별 현황 수정) ----------------
-    // BUILDINGS 등록 디렉터리는 정적 목업이라 직접 덮어쓰지 않고, 건물별 보정값만 별도로 저장해 병합한다.
-    getEffectiveBuilding: function (buildingId) {
-      var base = SAFEHOME.BUILDINGS[buildingId];
-      if (!base) return null;
-      var ov = (state.buildingOverrides && state.buildingOverrides[buildingId]) || {};
-      return Object.assign({}, base, {
-        core: Object.assign({}, base.core, ov.core || {}),
-        suppression: Object.assign({}, base.suppression, ov.suppression || {})
-      });
-    },
-    setBuildingFacility: function (buildingId, patch) {
-      var base = SAFEHOME.BUILDINGS[buildingId];
-      if (!base) return;
-      state.buildingOverrides = state.buildingOverrides || {};
-      var existing = state.buildingOverrides[buildingId] || {};
-      state.buildingOverrides[buildingId] = {
-        core: Object.assign({}, existing.core, patch.core || {}),
-        suppression: Object.assign({}, existing.suppression, patch.suppression || {}),
-        updatedAt: Date.now()
-      };
-      logAction('소방시설 점검', base.apt + ' ' + base.dong + '동 — 소방시설 현황 갱신');
-      commit();
-    },
-
-    // ---------------- 아파트 정보 일괄 등록 (아파트명·동·호 — 평면도/소방시설현황 제외) ----------------
-    // rows: [{ apt, dong, ho }, ...]. 같은 아파트명+동으로 묶어 건물 하나씩 만들고,
-    // 소방시설/평면도 관련 필드는 전부 "확인 필요" 상태로 비워둔다 — 이후 소방시설 점검 링크로 채운다.
-    registerBuildings: function (rows) {
-      var groups = {};
-      (rows || []).forEach(function (r) {
-        if (!r || !r.apt || !r.dong || !r.ho) return;
-        var key = SAFEHOME.normalizeAddr(r.apt) + '|' + SAFEHOME.normalizeAddr(r.dong);
-        if (!groups[key]) groups[key] = { apt: r.apt, dong: r.dong, units: [] };
-        if (groups[key].units.indexOf(r.ho) === -1) groups[key].units.push(r.ho);
-      });
-      state.importedBuildings = state.importedBuildings || {};
-      var added = 0, updated = 0;
-      Object.keys(groups).forEach(function (key) {
-        var g = groups[key];
-        var id = 'imp-' + key.replace(/\|/g, '-');
-        var isNew = !state.importedBuildings[id];
-        g.units.sort();
-        var floors = g.units.reduce(function (max, ho) {
-          var f = parseInt(ho.length > 2 ? ho.slice(0, -2) : ho, 10) || 0;
-          return Math.max(max, f);
-        }, 0);
-        state.importedBuildings[id] = {
-          id: id, apt: g.apt, dong: g.dong,
-          units: g.units, floors: floors, unitsPerFloor: null, hallwayType: '미상',
-          core: SAFEHOME.makeUnknownFacility(SAFEHOME.AFP_CORE_FIELDS),
-          suppression: SAFEHOME.makeUnknownFacility(SAFEHOME.AFP_SUPPRESSION_FIELDS),
-          search: SAFEHOME.makeUnknownSearch(),
-          source: 'import', importedAt: Date.now()
-        };
-        if (isNew) added++; else updated++;
-      });
-      applyImportedBuildings();
-      logAction('관리자', '아파트 정보 일괄 등록: 신규 ' + added + '개 동, 갱신 ' + updated + '개 동');
-      commit();
-      return { added: added, updated: updated };
-    },
-
-    // ---------------- 발급 링크 유효시간 (보안) ----------------
-    getLinkTtlHours: function () { return state.linkTtlHours || 2; },
-    setLinkTtlHours: function (hours) {
-      var h = Number(hours);
-      if (!h || h <= 0) return;
-      state.linkTtlHours = h;
-      logAction('관리자', '발급 링크 기본 유효시간을 ' + h + '시간으로 변경');
-      commit();
-    },
-    // 링크 자체에는 만료시각이 박혀있지 않고 접속 시점에 이 값을 조회해 판정하므로(app.js의
-    // isLinkExpired 참고), 여기서 유효시간만 늘려주면 이미 배포된 같은 링크가 그대로 다시 유효해진다.
-    regenerateIncidentLinks: function (incidentId) {
-      var inc = getIncident(incidentId) || activeIncident();
-      if (!inc) return;
-      var now = Date.now();
-      inc.residentLinkExp = now + ttlMs();
-      inc.firefighterLinkExp = now + ttlMs();
-      logAction('관리자', inc.apt + ' ' + inc.dong + '동 — 배포 링크 유효시간 연장');
-      commit();
-    },
-
-    // ---------------- 119 종합상황실 (다중 사건) ----------------
-    listIncidents: function () {
-      return Object.keys(state.incidents).map(function (id) { return state.incidents[id]; })
-        .sort(function (a, b) { return (b.confirmedAt || 0) - (a.confirmedAt || 0); });
-    },
-    getIncident: function (id) { return getIncident(id); },
-    getActiveIncident: function () { return activeIncident(); },
-    setActiveIncident: function (id) {
-      if (state.incidents[id]) { state.activeIncidentId = id; commit(); }
-    },
-
-    // 같은 건물(apt+dong)로 이미 열려있는(닫히지 않은) 사건이 있으면 그걸 재사용하고, 없으면 새로 만든다.
-    findOpenIncidentForBuilding: function (buildingId) {
-      var found = null;
-      Object.keys(state.incidents).forEach(function (id) {
-        var inc = state.incidents[id];
-        if (!found && !inc.closed && inc.buildingId === buildingId) found = inc;
-      });
-      return found;
-    },
-
-    // 신고 큐의 특정 신고를 근거로 등록된 건물을 찾아 새 사건(또는 기존 열린 사건)을 확정한다.
-    confirmIncidentFromReport: function (key, buildingId) {
-      var report = state.reports[key];
-      var building = SAFEHOME.BUILDINGS[buildingId];
-      if (!report || !building) return;
-      store.setIncidentBuilding(buildingId, report.ho);
-    },
-
-    // 건물 + 최초 신고 세대로 새 사건을 확정한다. 같은 건물의 열린 사건이 있으면 그 사건을 갱신한다.
-    setIncidentBuilding: function (buildingId, officialHo) {
-      var building = store.getEffectiveBuilding(buildingId);
-      if (!building) return;
-      var existing = store.findOpenIncidentForBuilding(buildingId);
-      var incident;
-      if (existing) {
-        incident = existing;
-        if (officialHo) incident.officialHo = officialHo;
-        incident.confirmedAt = Date.now();
-      } else {
-        incident = makeIncident(building, officialHo);
-        state.incidents[incident.id] = incident;
-      }
-      state.activeIncidentId = incident.id;
-      resyncAllReports();
-      logAction('관리자', '사건 위치 확정: ' + building.apt + ' ' + building.dong + '동' + (officialHo ? ' (' + officialHo + '호 기준)' : '') + (existing ? ' (기존 사건 갱신)' : ' (신규 사건)'));
-      commit();
-    },
-
-    // 오확정 정정용 — 활성 사건을 종료(닫음) 처리한다. 세대 기록은 이력으로 남기고 목록에서는 제외한다.
-    closeActiveIncident: function () {
-      var inc = activeIncident();
-      if (!inc) return;
-      inc.closed = true;
-      Object.keys(state.reports).forEach(function (k) {
-        if (state.reports[k].matchedIncidentId === inc.id) state.reports[k].matchedIncidentId = null;
-      });
-      var remaining = store.listIncidents().filter(function (i) { return !i.closed; });
-      state.activeIncidentId = remaining.length ? remaining[0].id : null;
-      logAction('관리자', inc.apt + ' ' + inc.dong + '동 사건 종료');
-      commit();
-    },
-
-    adjustCasualty: function (key, delta, incidentId) {
-      var inc = getIncident(incidentId) || activeIncident();
-      if (!inc) return;
-      inc.casualties = inc.casualties || makeCasualties();
-      var cur = inc.casualties[key] || 0;
-      inc.casualties[key] = Math.max(0, cur + delta);
-      commit();
-    },
-
-    getUnit: function (ho, incidentId) {
-      var inc = getIncident(incidentId) || activeIncident();
-      return inc ? inc.units[ho] : null;
-    },
-    getUnits: function (incidentId) {
-      var inc = getIncident(incidentId) || activeIncident();
-      if (!inc) return [];
-      return Object.keys(inc.units).map(function (ho) { return inc.units[ho]; })
-        .sort(function (a, b) { return b.floor - a.floor || (a.unitIndex - b.unitIndex); });
-    },
-
-    // 세대(라인)별 AFP 예외 — 건물 전체 기본값과 다른 시설현황을 특정 세대에만 적용한다.
-    // override는 전체 상태를 그대로 대체한다(부분 병합 아님) — 폼에서 "건물 기본값 사용"으로 되돌리면 그 필드는 사라져야 하기 때문.
-    setUnitAfpOverride: function (ho, override, incidentId) {
-      var inc = getIncident(incidentId) || activeIncident();
-      if (!inc) return;
-      var unit = ensureUnit(inc, ho);
-      unit.afpOverride = override || {};
-      logAction('119 상황실', ho + '호 시설현황 예외 ' + (Object.keys(unit.afpOverride).length ? '등록' : '해제'));
-      commit();
-    },
-    getEffectiveAfp: function (unit, incidentAfp) {
-      return Object.assign({}, incidentAfp, (unit && unit.afpOverride) || {});
-    },
-
-    setDispatchNote: function (text, incidentId) {
-      var inc = getIncident(incidentId) || activeIncident();
-      if (!inc) return;
-      inc.dispatchNote = text || '';
-      logAction('119 상황실', inc.apt + ' ' + inc.dong + '동 — 소방대원에게 메모 전달');
-      commit();
-    },
-
-    // ---------------- 현장 소방대원 ----------------
-    firefighterSetStatus: function (ho, status, incidentId) {
-      var inc = getIncident(incidentId) || activeIncident();
-      if (!inc) return;
-      var unit = ensureUnit(inc, ho);
-      unit.status = status;
-      unit.updatedAt = Date.now();
-      unit.firefighterTouched = true;
-      logAction('소방대원', ho + '호 상태를 "' + (SAFEHOME.STATUS_META[status] ? SAFEHOME.STATUS_META[status].label : status) + '"(으)로 변경');
-      commit();
-    },
-
-    reset: function () {
-      state = defaultState();
-      commit();
-    }
-  };
-
-  SAFEHOME.store = store;
-
-}(window.SAFEHOME = window.SAFEHOME || {}));
+  if(!Object.keys(groups).length)return fail('등록할 행이 없습니다.');
+  Object.keys(groups).forEach(function(id){var g=groups[id],old=state.importedBuildings[id];if(old)updated++;else added++;
+   var floors=g.units.map(S.unitFloor).filter(function(n){return n!==null;});
+   state.importedBuildings[id]=Object.assign({},old||{core:S.makeUnknownFacility(S.AFP_CORE_FIELDS),suppression:S.makeUnknownFacility(S.AFP_SUPPRESSION_FIELDS),search:S.makeUnknownSearch(),hallwayType:'미상'},g,{floors:floors.length?Math.max.apply(null,floors):null,unitsPerFloor:null,source:'import',importedAt:Date.now()});
+  });log('관리자','건물 등록: 신규 '+added+', 갱신 '+updated);return commit()?{added:added,updated:updated}:false;
+ },
+ getLinkTtlHours:function(){return state.linkTtlHours;},
+ setLinkTtlHours:function(h){h=Number(h);if(!Number.isFinite(h)||h<=0||h>168)return fail('유효시간은 0 초과 168시간 이하입니다.');state.linkTtlHours=h;return commit();},
+ regenerateIncidentLinks:function(id){var i=writable(id);if(!i)return false;i.residentLinkExp=i.firefighterLinkExp=Date.now()+state.linkTtlHours*3600000;log('관리자','링크 유효시간 연장',i.id);return commit();},
+ listIncidents:function(){return Object.values(state.incidents).sort(function(a,b){return b.confirmedAt-a.confirmedAt;});},
+ getIncident:incident,getActiveIncident:function(){return incident(activeId);},
+ setActiveIncident:function(id){if(!incident(id)||incident(id).closed)return false;activeId=id;notify();return true;},
+ findOpenIncidentForBuilding:findOpen,
+ confirmIncidentFromReport:function(k,bid){var r=state.reports[k];return r?store.setIncidentBuilding(bid,r.ho,undefined,k):false;},
+ setIncidentBuilding:function(bid,officialHo,editId,reportId){
+  var b=store.getEffectiveBuilding(bid),ho=S.normalizeHo(officialHo);if(!b)return fail('등록된 건물을 선택해주세요.');
+  var generated=S.generateUnits(b,ho);if(ho&&!has(generated,ho))return fail('화재 호수가 등록된 세대 목록에 없습니다.');
+  var i=editId?writable(editId):findOpen(bid);if(editId&&!i)return false;
+  if(i&&i.buildingId!==bid)return fail('다른 건물로의 정정은 기존 사건 종료 후 새 사건으로 등록해주세요.');
+  if(!i){var now=Date.now();i={id:'inc-'+uid(),buildingId:bid,apt:b.apt,dong:b.dong,officialHo:ho||null,confirmedAt:now,closed:false,units:generated,afp:copy(b.core),buildingSnapshot:copy(b),facilityVersion:b.facilityVersion,dispatchNote:'',casualties:{dead:0,severe:0,minor:0,guided:0,selfEvacuated:0},residentLinkExp:now+state.linkTtlHours*3600000,firefighterLinkExp:now+state.linkTtlHours*3600000};state.incidents[i.id]=i;}
+  else {i.officialHo=ho||null;Object.values(i.units).forEach(function(u){u.isFireOrigin=u.ho===ho;if(!u.fieldStatus)u.status=u.isFireOrigin?'danger':(u.reportedStatus||'unresponded');});}
+  // 관리자가 선택한 미확정 신고만 연결. 과거 기록의 자동 재사용 금지.
+  if(reportId){var r=state.reports[reportId];if(!r||r.archived||r.incidentId||!S.addrEquals(r.apt,r.dong,i.apt,i.dong)||(r.buildingId&&r.buildingId!==bid)||!applyReport(r,i)){state=copy(snapshot);return fail('선택한 신고와 사건의 대상이 일치하지 않습니다.');}}
+  activeId=i.id;log('관리자',i.apt+' '+i.dong+'동 사건 확정·정정',i.id);return commit()?i.id:false;
+ },
+ closeActiveIncident:function(id){var i=writable(id);if(!i)return false;i.closed=true;i.closedAt=Date.now();Object.values(state.reports).forEach(function(r){if(r.incidentId===i.id)r.archived=true;});log('관리자','사건 종료·기록 보관',i.id);if(activeId===i.id)activeId=null;return commit();},
+ adjustCasualty:function(k,d,id){var i=writable(id);if(!i||!has(i.casualties,k)||!Number.isInteger(d))return false;i.casualties[k]=Math.max(0,i.casualties[k]+d);log('소방대원',k+' 집계 '+d,i.id);return commit();},
+ getUnit:function(ho,id){return unit(selected(id),ho);},
+ getUnits:function(id){var i=selected(id);return i?Object.values(i.units).sort(function(a,b){return (b.floor||0)-(a.floor||0)||String(a.ho).localeCompare(String(b.ho),'ko',{numeric:true});}):[];},
+ setUnitAfpOverride:function(ho,o,id){var i=writable(id),u=unit(i,ho);if(!u)return false;u.afpOverride=tri(o,S.AFP_CORE_FIELDS);i.facilityVersion=Date.now();log('상황실',S.normalizeHo(ho)+'호 시설 예외 변경',i.id);return commit();},
+ setDispatchNote:function(text,id){var i=writable(id);if(!i)return false;i.dispatchNote=String(text).slice(0,5000);i.noteUpdatedAt=Date.now();i.noteAcknowledgedAt=null;log('상황실','메모 전달',i.id);return commit();},
+ acknowledgeNote:function(id){var i=writable(id);if(!i)return false;i.noteAcknowledgedAt=Date.now();log('소방대원','메모 수신 확인',i.id);return commit();},
+ firefighterSetStatus:function(ho,status,id){var i=writable(id),u=unit(i,ho);if(!u||!has(S.STATUS_META,status))return false;u.status=u.fieldStatus=status;u.fieldConfirmedAt=u.updatedAt=Date.now();u.needsReview=false;log('소방대원',S.normalizeHo(ho)+'호 '+status,i.id);return commit();},
+ reset:function(){if(blocked)return fail('원본 복구가 먼저 필요합니다. 자동 초기화하지 않았습니다.');state=fresh();location=norm({});activeId=null;return commit();}
+};
+S.store=store;
+}(window.SAFEHOME=window.SAFEHOME||{}));

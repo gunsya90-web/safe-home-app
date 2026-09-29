@@ -27,10 +27,24 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify scenarios
+        run: node --test tests/*.test.cjs
+
+      - name: Stage public files
+        run: |
+          mkdir -p dist
+          cp index.html sw.js manifest.webmanifest dist/
+          cp -r css js icons dist/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: 'dist'
 
       - name: Deploy to GitHub Pages
         id: deployment

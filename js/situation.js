@@ -14,7 +14,8 @@
 
   var afpChecklistOpen = false; // 체크리스트의 "피난시설 존재 여부" 펼침 상태
   var afpOverrideOpen = false; // 세대별 AFP 예외 입력 폼 펼침 상태
-  var noteDraft = null; // 상황실 메모 입력창 초안 (null이면 저장된 값을 그대로 표시)
+  var noteDraft = null;
+  var noteDrafts = Object.create(null); // 상황실 메모 입력창 초안 (null이면 저장된 값을 그대로 표시)
   var panelOpenState = {}; // 아코디언 패널별 접기/펼치기 상태 (렌더링 간 유지)
 
   var URGENCY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -56,7 +57,7 @@
     SAFEHOME.store.listIncidents().forEach(function (inc) {
       SAFEHOME.store.getUnits(inc.id)
         .filter(function (u) { return u.urgency === 'critical' && u.status !== 'safe'; })
-        .forEach(function (u) { keys.push('u:' + inc.id + ':' + u.ho); });
+        .forEach(function (u) { keys.push('u:' + esc(inc.id) + ':' + u.ho); });
     });
     return keys;
   }
@@ -147,7 +148,7 @@
         activeIncidentHeaderHtml(active) +
         statBarHtml(counts) +
         '<div class="dash-grid-2">' +
-          facilityPanelHtml(SAFEHOME.store.getEffectiveBuilding(active.buildingId), active.afp) +
+          facilityPanelHtml(SAFEHOME.store.getIncidentBuilding(active.id), active.afp) +
           specialStructureHtml(SAFEHOME.store.getEffectiveBuilding(active.buildingId)) +
         '</div>' +
         '<div class="dash-grid-2">' +
@@ -173,7 +174,7 @@
     var tabs = incidents.map(function (inc) {
       var urgentCount = SAFEHOME.store.getUnits(inc.id).filter(function (u) { return u.status === 'danger'; }).length;
       var isActive = active && active.id === inc.id;
-      return '<button class="incident-tab' + (isActive ? ' active' : '') + '" data-select-incident="' + inc.id + '">' +
+      return '<button class="incident-tab' + (isActive ? ' active' : '') + '" data-select-incident="' + esc(inc.id) + '">' +
         esc(inc.apt) + ' ' + esc(inc.dong) + '동' + (urgentCount ? ' <span class="badge">' + urgentCount + '</span>' : '') +
       '</button>';
     }).join('');
@@ -226,9 +227,9 @@
   // 특화구조 정보 — 복층/다락 세대, 옥상 대피(최상층 여부), 복도 형태 등 상황 판단에 필요한 건물 구조 요약.
   function specialStructureHtml(building) {
     var s = building.search;
-    var roofOnTopFloor = building.core.roofEvacuation ? '최상층(' + building.floors + '층)에서 옥상으로 진입' : '옥상 대피 불가 등록 건물';
+    var roofOnTopFloor = building.core.roofEvacuation == null ? '옥상 대피 가능 여부 미확인' : building.core.roofEvacuation ? '최상층(' + building.floors + '층)에서 옥상으로 진입' : '옥상 대피 불가 등록 건물';
     var body =
-      '<div class="check-row"><span class="check-mark">' + SAFEHOME.icon2('home') + '</span><span class="check-label">복층·다락 세대</span><span class="check-value">' + (s.duplexUnits.length ? s.duplexUnits.join(', ') + '호' : '없음') + '</span></div>' +
+      '<div class="check-row"><span class="check-mark">' + SAFEHOME.icon2('home') + '</span><span class="check-label">복층·다락 세대</span><span class="check-value">' + (s.duplexUnits.length ? esc(s.duplexUnits.join(', ')) + '호' : '없음') + '</span></div>' +
       '<div class="check-row"><span class="check-mark">' + SAFEHOME.icon2('building') + '</span><span class="check-label">옥상 대피 · 최상층</span><span class="check-value">' + esc(roofOnTopFloor) + '</span></div>' +
       '<div class="check-row"><span class="check-mark">' + SAFEHOME.icon2('building') + '</span><span class="check-label">복도 형태</span><span class="check-value">' + esc(building.hallwayType) + ' · ' + esc(SAFEHOME.buildingUnitSummary(building)) + '</span></div>' +
       '<div class="afp-note" style="margin-top:8px;">' + esc(s.duplexNote) + '</div>';
@@ -237,8 +238,8 @@
 
   // 119 상황실이 남기는 메모 — 소방대원 화면(dash-header 아래)에 그대로 노출된다.
   function noteFormHtml(inc) {
-    var value = noteDraft !== null ? noteDraft : inc.dispatchNote;
-    var body = '<textarea id="sh-note-input" rows="2" placeholder="예: 903호 거동 불편 노약자 1인, 우선 구조 요망" ' +
+    var value = Object.prototype.hasOwnProperty.call(noteDrafts, inc.id) ? noteDrafts[inc.id] : inc.dispatchNote;
+    var body = '<div class="afp-note">' + (inc.noteAcknowledgedAt ? '현장 수신 확인: ' + SAFEHOME.fmtTime(inc.noteAcknowledgedAt) : '아직 현장 수신 확인 전') + '</div><textarea id="sh-note-input" rows="2" placeholder="예: 903호 거동 불편 노약자 1인, 우선 구조 요망" ' +
         'style="width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;">' + esc(value) + '</textarea>' +
       '<button class="utility-btn" style="width:100%;margin-top:8px;" id="sh-note-save">전달하기</button>';
     return SAFEHOME.detailsPanel(SAFEHOME.icon2('note') + ' 소방대원에게 메모 전달', body, { id: 'note', closed: true, openState: panelOpenState.note });
@@ -283,9 +284,9 @@
       var meta = SAFEHOME.STATUS_META[u.status];
       var res = SAFEHOME.RESULTS[u.resultKey];
       var urgencyBadge = u.status === 'safe' ? '<span style="color:var(--green);">' + SAFEHOME.icon2('check') + '</span> 완료' : (URGENCY_LABEL[u.urgency] || '');
-      return '<button class="queue-item' + (selectedHo === u.ho ? ' selected' : '') + '" data-select-ho="' + u.ho + '">' +
+      return '<button class="queue-item' + (selectedHo === u.ho ? ' selected' : '') + '" data-select-ho="' + esc(u.ho) + '">' +
         '<span class="queue-urgency">' + urgencyBadge + '</span>' +
-        '<span class="queue-ho">' + u.ho + '호</span>' +
+        '<span class="queue-ho">' + esc(u.ho) + '호</span>' +
         '<span class="queue-status" style="color:' + meta.color + '">' + meta.label + '</span>' +
         '<span class="queue-result">' + (res ? res.icon + ' ' + res.title : '') + '</span>' +
         '<span class="queue-time">' + SAFEHOME.fmtTime(u.updatedAt) + '</span>' +
@@ -310,7 +311,7 @@
 
     var afpCount = SAFEHOME.AFP_CORE_FIELDS.filter(function (f) { return afp[f.key] === true; }).length;
     var checklist =
-      checklistRow('신고자 위치 확인', true, ho + '호') +
+      checklistRow('신고 위치', true, ho + '호') +
       checklistRow('연기·화염 유입 여부', !!a.q2, a.q2 || '미확인') +
       checklistRow('현관 대피 가능 여부', !!a.q3, a.q3 || '미확인') +
       checklistRow('화점 대비 위치', !!a.q5, a.q5 || '미확인') +
@@ -321,9 +322,9 @@
       (afpChecklistOpen ? SAFEHOME.renderAfpGrid(afp) + afpOverrideToggleHtml(hasOverride) + (afpOverrideOpen ? afpOverrideFormHtml(unit) : '') : '');
 
     var notes = (unit.notes || []).map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('');
-    var vulnerable = unit.hasVulnerable ? '<div class="tag-warn">' + SAFEHOME.icon2('alert') + ' 거동 불편자 있음 (' + unit.occupants + '인 세대)</div>' : '<div class="tag-info">' + unit.occupants + '인 세대</div>';
+    var vulnerable = '<div class="tag-info">' + esc(SAFEHOME.occupantsText(unit)) + '</div>' + SAFEHOME.reviewHtml(unit);
 
-    return '<h3 class="panel-title">' + SAFEHOME.icon2('note') + ' ' + ho + '호 · 상황관리 체크리스트</h3>' +
+    return '<h3 class="panel-title">' + SAFEHOME.icon2('note') + ' ' + esc(ho) + '호 · 상황관리 체크리스트</h3>' +
       vulnerable +
       checklist +
       (res ? '<div class="action-card ' + res.cls + '" style="margin-top:12px;"><h3>' + res.icon + ' 판정 결과: ' + esc(res.title) + '</h3><ul>' + notes + '</ul></div>' : '<div class="empty-note">아직 대피 판정 전입니다.</div>');
@@ -339,10 +340,11 @@
     var ov = unit.afpOverride || {};
     var fields = SAFEHOME.AFP_CORE_FIELDS.map(function (f) {
       var v = ov[f.key];
-      var sel = v === true ? 'true' : (v === false ? 'false' : 'default');
+      var sel = v === true ? 'true' : (v === false ? 'false' : (v === null ? 'unknown' : 'default'));
       return '<div class="facility-field"><label>' + esc(f.label) + '</label>' +
         '<select data-unit-afp-key="' + f.key + '">' +
         '<option value="default"' + (sel === 'default' ? ' selected' : '') + '>건물 기본값 사용</option>' +
+        '<option value="unknown"' + (sel === 'unknown' ? ' selected' : '') + '>이 세대는 확인 필요</option>' +
         '<option value="true"' + (sel === 'true' ? ' selected' : '') + '>' + esc(f.yes) + '</option>' +
         '<option value="false"' + (sel === 'false' ? ' selected' : '') + '>' + esc(f.no) + '</option>' +
         '</select></div>';
@@ -352,6 +354,8 @@
   }
 
   function bindEvents() {
+    var boundIncident = SAFEHOME.store.getActiveIncident();
+    var boundId = boundIncident && boundIncident.id;
     SAFEHOME.bindPanelToggles(root, panelOpenState);
     root.querySelectorAll('[data-select-ho]').forEach(function (el) {
       el.onclick = function () {
@@ -371,8 +375,9 @@
         var v = sel.value;
         if (v === 'true') override[sel.getAttribute('data-unit-afp-key')] = true;
         else if (v === 'false') override[sel.getAttribute('data-unit-afp-key')] = false;
+        else if (v === 'unknown') override[sel.getAttribute('data-unit-afp-key')] = null;
       });
-      SAFEHOME.store.setUnitAfpOverride(ho, override);
+      if (!SAFEHOME.store.setUnitAfpOverride(ho, override, boundId)) return;
       afpOverrideOpen = false;
       SAFEHOME.toast(ho + '호 시설현황 예외가 저장되었습니다.');
     };
@@ -386,12 +391,12 @@
     var afpToggle = document.getElementById('sh-toggle-afp-checklist');
     if (afpToggle) afpToggle.onclick = function () { afpChecklistOpen = !afpChecklistOpen; render(); };
     var noteInput = document.getElementById('sh-note-input');
-    if (noteInput) noteInput.oninput = function () { noteDraft = noteInput.value; };
+    if (noteInput) noteInput.oninput = function () { noteDrafts[boundId] = noteInput.value; };
     var noteSaveBtn = document.getElementById('sh-note-save');
     if (noteSaveBtn) noteSaveBtn.onclick = function () {
       var text = document.getElementById('sh-note-input').value;
-      noteDraft = null;
-      SAFEHOME.store.setDispatchNote(text);
+      if (!SAFEHOME.store.setDispatchNote(text, boundId)) return;
+      delete noteDrafts[boundId];
       SAFEHOME.toast('메모가 현장 소방대원 화면에 전달되었습니다.');
     };
   }

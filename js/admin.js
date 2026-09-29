@@ -17,6 +17,7 @@
   var formMode = null;       // null | 'new' | 'edit'
   var formBuildingId = '';
   var formHo = '';
+  var formReportKey = '';
   var formAptQuery = '';    // 등록 건물이 많을 때(대량 등록) 검색으로 좁혀서 고르기 위한 아파트명 입력값
   var facilityAptQuery = ''; // 소방시설 점검 링크 발급 패널의 아파트명 검색 입력값
   var facilityBuildingId = ''; // 위 검색으로 고른 건물(동) — 이 값이 있어야 점검 링크가 표시된다
@@ -97,13 +98,26 @@
       facilityLinksPanelHtml() +
       buildingImportPanelHtml();
 
+    root.insertAdjacentHTML('beforeend', '<section class="panel"><h3>종료 사건 이력</h3>' +
+      SAFEHOME.store.listIncidents().filter(function(i){return i.closed;}).map(function(i){
+        return '<details><summary>' + esc(i.apt + ' ' + i.dong + '동 · ' + new Date(i.closedAt || i.confirmedAt).toLocaleString('ko-KR')) + '</summary><p>세대 ' + Object.keys(i.units || {}).length + ' · 기록은 다음 사건에 재사용하지 않습니다.</p></details>';
+      }).join('') + '<button class="utility-btn" id="ad-export">전체 기록 백업 다운로드</button><label class="field-label">백업으로 복구 — 현재 원본은 별도 보존<input type="file" id="ad-restore" accept="application/json,.json"></label></section>');
+    document.getElementById('ad-export').onclick = function(){
+      var url = URL.createObjectURL(new Blob([SAFEHOME.store.exportBackup()], {type:'application/json'}));
+      var a = document.createElement('a'); a.href = url; a.download = 'safehome-backup.json'; a.click(); URL.revokeObjectURL(url);
+    };
+    document.getElementById('ad-restore').onchange = function(event){
+      var file = event.target.files[0]; if (!file) return;
+      if (!confirm('선택한 백업으로 복구할까요? 현재 원본은 별도 보존됩니다.')) return;
+      file.text().then(function(text){ if(SAFEHOME.store.restoreBackup(text)) { activeAdminId = null; ensureActiveAdminId(); render(); SAFEHOME.toast('백업을 복구했습니다.'); } }).catch(function(){ SAFEHOME.toast('백업 파일을 읽지 못했습니다.'); });
+    };
     bindEvents();
   }
 
   function incidentTabsHtml(incidents, active) {
     var tabs = incidents.map(function (inc) {
       var isActive = active && active.id === inc.id;
-      return '<button class="incident-tab' + (isActive ? ' active' : '') + '" data-select-incident="' + inc.id + '">' +
+      return '<button class="incident-tab' + (isActive ? ' active' : '') + '" data-select-incident="' + esc(inc.id) + '">' +
         esc(inc.apt) + ' ' + esc(inc.dong) + '동' +
       '</button>';
     }).join('');
@@ -145,7 +159,7 @@
       reportPicker = '<div class="facility-field" style="margin-bottom:10px;"><label>기준 신고 선택 (선택)</label>' +
         '<select id="ad-form-report"><option value="">— 직접 입력 —</option>' +
         pending.map(function (r) {
-          return '<option value="' + esc(r.key) + '">' + esc(r.apt || '(위치 미상)') + ' ' + esc(r.dong ? r.dong + '동 ' : '') + esc(r.ho ? r.ho + '호' : '') + (r.auto ? ' · 자동감지' : '') + '</option>';
+          return '<option value="' + esc(r.key) + '"' + (formReportKey === r.key ? ' selected' : '') + '>' + esc(r.apt || '(위치 미상)') + ' ' + esc(r.dong ? r.dong + '동 ' : '') + esc(r.ho ? r.ho + '호' : '') + (r.auto ? ' · 자동감지' : '') + '</option>';
         }).join('') + '</select></div>';
     }
     return '<div class="panel" style="border-color:#FFD180;background:#FFFBF2;">' +
@@ -168,7 +182,7 @@
 
   // --------------------------------------------------------- 사건 관리 패널(선택된 사건)
   function incidentManagePanelHtml(inc) {
-    var residentLink = location.origin + location.pathname + '?role=resident&apt=' + encodeURIComponent(inc.apt) + '&dong=' + encodeURIComponent(inc.dong);
+    var residentLink = location.origin + location.pathname + '?role=resident&incident=' + encodeURIComponent(inc.id) + '&building=' + encodeURIComponent(inc.buildingId) + '&apt=' + encodeURIComponent(inc.apt) + '&dong=' + encodeURIComponent(inc.dong);
     var firefighterLink = location.origin + location.pathname + '?role=firefighter&incident=' + encodeURIComponent(inc.id);
     var now = Date.now();
     var residentExpired = now > inc.residentLinkExp;
@@ -246,8 +260,8 @@
       return SAFEHOME.BUILDINGS[id].source === 'import';
     }).length;
     var body =
-      '<div class="afp-note" style="margin-bottom:10px;">한 줄에 "아파트명,동,호" 형식으로 붙여넣어주세요(콤마 또는 탭 구분, 엑셀에서 복사해도 됩니다). 같은 아파트명+동은 하나의 동으로 묶여 등록됩니다.<br>예) 대구행복타운,101,101</div>' +
-      '<textarea id="ad-import-csv" rows="6" placeholder="대구행복타운,101,101&#10;대구행복타운,101,102&#10;대구행복타운,102,101" style="width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:12.5px;font-family:inherit;resize:vertical;"></textarea>' +
+      '<div class="afp-note" style="margin-bottom:10px;">아파트명,동,호,단지코드,주소 순서입니다. 단지코드 또는 주소가 필요하며 같은 이름의 다른 단지를 합치지 않습니다. 단지 식별자+동으로 묶습니다.<br>예) 대구행복타운,101,101,A001,대구 서구 예시로 1</div>' +
+      '<textarea id="ad-import-csv" rows="6" placeholder="대구행복타운,101,101,A001,대구 서구 예시로 1&#10;대구행복타운,101,102,A001,대구 서구 예시로 1" style="width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:12.5px;font-family:inherit;resize:vertical;"></textarea>' +
       '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--gray);"><input type="checkbox" id="ad-import-header">첫 줄은 제목행(헤더)이라 건너뜁니다</label>' +
       '<button class="start-btn" id="ad-import-buildings" style="margin-top:8px;">아파트 정보 가져오기</button>' +
       '<div class="afp-note" style="margin-top:10px;">현재 일괄 등록된 건물: ' + registeredCount + '개 동 · 소방시설 현황은 등록 직후 전부 "확인 필요" 상태이며, 위 "소방시설 점검 링크"로 채워야 합니다.</div>';
@@ -255,12 +269,7 @@
   }
 
   function parseBuildingCsv(text, skipHeader) {
-    var lines = text.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(function (l) { return l.length; });
-    if (skipHeader) lines.shift();
-    return lines.map(function (line) {
-      var cols = line.split(/\t|,/).map(function (c) { return c.trim().replace(/^"|"$/g, ''); });
-      return { apt: cols[0] || '', dong: cols[1] || '', ho: cols[2] || '' };
-    }).filter(function (r) { return r.apt && r.dong && r.ho; });
+    return SAFEHOME.parseBuildingCsv(text, skipHeader);
   }
 
   // 링크 복사/바로가기 버튼은 전체 렌더 때(root 기준)뿐 아니라, 포커스를 지키려고 일부 영역만
@@ -315,6 +324,7 @@
       var rows = parseBuildingCsv(text, skipHeader);
       if (!rows.length) { SAFEHOME.toast('가져올 데이터가 없습니다. "아파트명,동,호" 형식인지 확인해주세요.'); return; }
       var result = SAFEHOME.store.registerBuildings(rows);
+      if (!result) return;
       SAFEHOME.toast(result.added + '개 동 신규 등록, ' + result.updated + '개 동 갱신되었습니다. 소방시설 현황은 점검 링크로 채워주세요.');
       render();
     };
@@ -328,6 +338,7 @@
     var addBtn = document.getElementById('ad-add-incident');
     if (addBtn) addBtn.onclick = function () {
       formBuildingId = ''; formHo = ''; formAptQuery = '';
+      formReportKey = '';
       formMode = 'new';
       render();
     };
@@ -346,9 +357,10 @@
     var reportPicker = document.getElementById('ad-form-report');
     if (reportPicker) reportPicker.onchange = function () {
       var key = reportPicker.value;
+      formReportKey = key;
       var r = key ? SAFEHOME.store.getReport(key) : null;
       if (r) {
-        var b = SAFEHOME.findBuildingByAddress(r.apt, r.dong);
+        var b = r.buildingId ? SAFEHOME.BUILDINGS[r.buildingId] : SAFEHOME.findBuildingByAddress(r.apt, r.dong);
         formBuildingId = b ? b.id : '';
         formHo = r.ho || '';
         formAptQuery = b ? b.apt : (r.apt || '');
@@ -377,8 +389,12 @@
       var buildingSel = document.getElementById('ad-form-building').value;
       var hoVal = document.getElementById('ad-form-ho').value.trim();
       if (!buildingSel) { SAFEHOME.toast('등록 건물을 선택해주세요.'); return; }
-      formMode = null; // store.setIncidentBuilding()이 동기적으로 render()를 호출하므로 먼저 닫아둔다.
-      SAFEHOME.store.setIncidentBuilding(buildingSel, hoVal || null);
+      var editId = formMode === 'edit' ? activeAdminId : undefined;
+      var reportSelect = document.getElementById('ad-form-report');
+      var reportId = formMode === 'new' ? formReportKey || undefined : undefined;
+      var resultId = SAFEHOME.store.setIncidentBuilding(buildingSel, hoVal || null, editId, reportId);
+      if (!resultId) return;
+      formMode = null;
       var b = SAFEHOME.BUILDINGS[buildingSel];
       var inc = SAFEHOME.store.findOpenIncidentForBuilding(buildingSel);
       activeAdminId = inc ? inc.id : activeAdminId;
@@ -388,9 +404,8 @@
     var closeBtn = document.getElementById('ad-close-incident');
     if (closeBtn) closeBtn.onclick = function () {
       if (!activeAdminId) return;
-      if (confirm('이 사건을 종료할까요? 세대 현황판에서 제외되고 조치 이력에만 남습니다.')) {
-        SAFEHOME.store.setActiveIncident(activeAdminId);
-        SAFEHOME.store.closeActiveIncident();
+      if (confirm('이 사건을 종료할까요? 진행 목록에서 제외되고 사건·신고 이력으로 보관됩니다.')) {
+        if (!SAFEHOME.store.closeActiveIncident(activeAdminId)) return;
         activeAdminId = null;
         SAFEHOME.toast('사건을 종료했습니다.');
       }
@@ -398,7 +413,7 @@
     var regenBtn = document.getElementById('ad-regen-links');
     if (regenBtn) regenBtn.onclick = function () {
       if (!activeAdminId) return;
-      SAFEHOME.store.regenerateIncidentLinks(activeAdminId);
+      if (!SAFEHOME.store.regenerateIncidentLinks(activeAdminId)) return;
       SAFEHOME.toast('두 링크의 유효시간이 지금부터 다시 ' + SAFEHOME.store.getLinkTtlHours() + '시간으로 연장되었습니다.');
     };
     var saveTtlBtn = document.getElementById('ad-save-ttl');

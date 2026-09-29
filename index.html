@@ -2,13 +2,14 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#D7263D">
 <meta name="description" content="SAFE-HOME · AFP 기반 공동주택 화재 대응 정보공유 및 의사결정 플랫폼 데모">
 <title>SAFE-HOME · 화재 대응 의사결정 플랫폼</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/review.css">
 </head>
 <body>
 <div id="app">
@@ -33,6 +34,8 @@
     <button class="role-tab" data-role="firefighter"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em;"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/></svg> 소방대원<span class="tab-badge" id="badge-firefighter"></span></button>
   </nav>
 
+  <div class="demo-banner"><strong>SAFE-HOME 데모</strong><span>같은 브라우저에서만 공유됩니다. 실제 신고는 119 전화로 해주세요.</span></div>
+  <div id="storageStatus" class="review-notice" role="alert" hidden></div>
   <main id="view-root" class="view-root"></main>
 
   <div class="sos-fab" id="sosFab" style="display:none;">
@@ -43,6 +46,7 @@
 
 <script src="js/ui.js"></script>
 <script src="js/data.js"></script>
+<script src="js/csv.js"></script>
 <script src="js/store.js"></script>
 <script src="js/rules.js"></script>
 <script src="js/resident.js"></script>

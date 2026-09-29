@@ -3,6 +3,9 @@
 (function (SAFEHOME) {
   'use strict';
 
+  SAFEHOME.operationMessage = function (ok, message) { if (ok) SAFEHOME.toast(message); else SAFEHOME.toast(SAFEHOME.store.getError() || '처리할 수 없습니다. 대상을 다시 확인해주세요.'); };
+  SAFEHOME.occupantsText = function(u) { return (u.occupants == null ? '인원 미확인' : u.occupants + '인') + ' · ' + (u.hasVulnerable == null ? '이동 지원 여부 미확인' : u.hasVulnerable ? '이동 지원 필요' : '이동 지원 필요 없음'); };
+  SAFEHOME.reviewHtml = function(u) { return (u.needsReview ? '<div class="review-notice" role="status">새 신고와 현장 확인이 다릅니다. 재확인 필요</div>' : '') + (u.updatedAt && Date.now() - u.updatedAt > 300000 ? '<div class="afp-note">5분 이상 경과한 정보 · 현재 상태를 다시 확인하세요.</div>' : ''); };
   function escapeHtml(str) {
     return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -84,8 +87,8 @@
   SAFEHOME.renderOccupancyGrid = function (units, opts) {
     opts = opts || {};
     var byFloor = {};
-    units.forEach(function (u) { (byFloor[u.floor] = byFloor[u.floor] || []).push(u); });
-    var floors = Object.keys(byFloor).map(Number).sort(function (a, b) { return b - a; });
+    units.forEach(function (u) { (byFloor[u.floor == null ? '미확인' : u.floor] = byFloor[u.floor == null ? '미확인' : u.floor] || []).push(u); });
+    var floors = Object.keys(byFloor).sort(function (a, b) { return (Number(b) || 0) - (Number(a) || 0); });
     var rows = floors.map(function (f) {
       var cells = byFloor[f]
         .sort(function (a, b) { return a.unitIndex - b.unitIndex; })
@@ -95,11 +98,11 @@
           if (opts.selected === u.ho) cls += ' selected';
           if (u.isFireOrigin) cls += ' fire-origin';
           if (opts.filterStatus && opts.filterStatus !== 'all' && opts.filterStatus !== u.status) cls += ' dimmed';
-          return '<button class="' + cls + '" data-select-ho="' + u.ho + '" ' +
-            'title="' + u.ho + '호 · ' + meta.label + '">' +
-            '<span class="occ-icon">' + (u.isFireOrigin ? SAFEHOME.icon2('flame') : meta.icon) + '</span>' + '<span class="occ-ho">' + u.ho + '</span></button>';
+          return '<button class="' + cls + '" data-select-ho="' + SAFEHOME.escapeHtml(u.ho) + '" ' +
+            'title="' + SAFEHOME.escapeHtml(u.ho) + '호 · ' + meta.label + '">' +
+            '<span class="occ-icon">' + (u.isFireOrigin ? SAFEHOME.icon2('flame') : meta.icon) + '</span>' + '<span class="occ-ho">' + SAFEHOME.escapeHtml(u.ho) + '</span></button>';
         }).join('');
-      return '<div class="occ-row"><div class="occ-floor">' + f + 'F</div><div class="occ-cells">' + cells + '</div></div>';
+      return '<div class="occ-row"><div class="occ-floor">' + SAFEHOME.escapeHtml(f) + (f === '미확인' ? '' : 'F') + '</div><div class="occ-cells">' + cells + '</div></div>';
     }).join('');
     return '<div class="occ-grid">' + rows + '</div>';
   };
@@ -155,7 +158,7 @@
         (partition ? '<line x1="300" y1="6" x2="300" y2="36" stroke="#D7263D" stroke-width="4" stroke-dasharray="3 3"/><text x="270" y="24" font-size="10" fill="#D7263D" font-weight="700">경량칸막이</text>' : '') +
         (shelter ? '<rect x="130" y="6" width="70" height="30" fill="#E3F2FD" stroke="#1565C0" stroke-width="2"/><text x="165" y="25" font-size="10" text-anchor="middle" fill="#1565C0" font-weight="700">대피공간</text>' : '') +
         (hatch ? '<rect x="55" y="10" width="26" height="22" fill="#E8F5E9" stroke="#2E7D32" stroke-width="2"/><text x="68" y="46" font-size="10" text-anchor="middle" fill="#2E7D32" font-weight="700">하향식피난구</text>' : '') +
-        (!(partition || shelter || hatch) ? '<text x="160" y="24" font-size="10" text-anchor="middle" fill="#9AA0A6">등록된 대체 대피시설 없음</text>' : '') +
+        (!(partition || shelter || hatch) ? '<text x="160" y="24" font-size="10" text-anchor="middle" fill="#9AA0A6">등록된 설치 정보 없음 · 미확인 여부 확인</text>' : '') +
       '</svg>' +
       '<div style="font-size:11px;color:var(--gray);text-align:center;margin-top:4px;">※ 실제 세대 도면이 아닌, 등록된 AFP 정보 기반 개략도입니다.</div>';
   };
@@ -169,10 +172,11 @@
 
   var toastTimer = null;
   SAFEHOME.toast = function (msg) {
+    if (SAFEHOME.store && SAFEHOME.store.getError()) msg = SAFEHOME.store.getError();
     var el = document.getElementById('sh-toast');
     if (!el) {
       el = document.createElement('div');
-      el.id = 'sh-toast';
+      el.id = 'sh-toast'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
       el.className = 'sh-toast';
       document.body.appendChild(el);
     }

@@ -1,0 +1,58 @@
+/* 역할과 상태를 구분하고 좁은 화면의 입력·판독을 보완한다. */
+body { background:#e9edf1; }
+#app { box-shadow:0 0 40px #14233512; }
+.demo-banner { padding:12px 20px; display:flex; flex-direction:column; gap:4px; background:#f0f4f8; border-bottom:1px solid #d9e1e9; font-size:12px; line-height:1.55; color:#465366; }
+.demo-banner strong { letter-spacing:.08em; font-size:11px; color:#334155; }
+.review-notice { margin:12px 20px; padding:14px 16px; border:1px solid #e6c77d; border-radius:12px; background:#fff8e9; color:#65471e; font-size:14px; line-height:1.6; }
+.review-notice[hidden] { display:none; }
+.field-label { display:flex; flex-direction:column; gap:7px; margin:14px 0 8px; color:#334155; font-size:14px; font-weight:700; text-align:left; line-height:1.5; min-width:0; }
+.field-label span { font-size:12px; font-weight:400; color:#64748b; }
+input, select, textarea { max-width:100%; font:inherit; }
+.home-box select, .home-box textarea, .field-label input, .field-label textarea, .field-label select { width:100%; min-height:46px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:9px; background:#f8fafc; color:#172033; font-size:16px; }
+.home-box textarea { min-height:78px; resize:vertical; }
+.home-inputs:has(.field-label) { grid-template-columns:1fr 1fr; gap:14px; }
+.home-inputs input { font-size:16px; min-height:46px; }
+.start-screen { padding-top:26px; }
+.start-emoji { font-size:40px; margin-bottom:10px; }
+.start-title { font-size:25px; line-height:1.4; }
+.start-sub { line-height:1.65; font-size:14px; }
+.start-btn { box-shadow:none; }
+.start-btn:hover { background:var(--red-dark); }
+.home-box { text-align:left; }
+.save-btn { background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; }
+.theme-toggle-btn, .reset-btn { width:44px; height:44px; }
+button, summary { touch-action:manipulation; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline:3px solid #2563eb; outline-offset:3px; }
+.role-tabs { position:relative; top:auto; }
+.panel { min-width:0; }
+.panel .utility-btn { white-space:normal; }
+.incident-tabs { flex-wrap:wrap; }
+.stat-label { line-height:1.4; }
+.occ-cells { flex-wrap:wrap; min-width:0; }
+.occ-cell { min-width:44px; min-height:44px; overflow-wrap:anywhere; }
+.loc-pill, .queue-ho, .ff-feed-ho { overflow-wrap:anywhere; }
+.topbar .loc { white-space:normal; font-size:12px; line-height:1.4; }
+.sos-fab a { padding-bottom:calc(18px + env(safe-area-inset-bottom)); }
+.view-root:has(> .question) { padding:24px 20px 110px; }
+.view-root > .review-notice { margin-top:10px; }
+.view-root:has(> .result-header) { padding:20px 16px 110px; }
+.view-root:has(> .result-header) > .review-notice, .view-root:has(> .result-header) > .tag-warn { margin-left:0; margin-right:0; }
+.view-root:has(> .result-header) .result-header { padding:6px 0 22px; }
+.view-root:has(> .result-header) .summary-card, .view-root:has(> .result-header) .action-card, .view-root:has(> .result-header) .afp-card, .view-root:has(> .result-header) .howto-card { margin-left:0; margin-right:0; }
+.view-root > .tag-warn { margin:8px 20px; padding:12px; line-height:1.5; }
+#app.dark { background:#f1f5f9; }
+#app.dark .demo-banner { background:#253247; color:#e2e8f0; }
+#app.dark .demo-banner strong { color:#fff; }
+@media (max-width:600px) {
+  .stat-bar { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .dash-title { font-size:21px; }
+  .dash-title-row { flex-wrap:wrap; gap:12px; }
+  .casualty-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .utility-row { flex-wrap:wrap; }
+  .utility-row button { min-height:48px; }
+  .home-inputs { grid-template-columns:minmax(0,1.4fr) minmax(0,.8fr) minmax(0,.8fr); }
+  .home-inputs:has(.field-label) { grid-template-columns:1fr 1fr; }
+  .queue-item { gap:6px; }
+  .start-screen { padding-left:16px; padding-right:16px; }
+}
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
