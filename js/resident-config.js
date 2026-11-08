@@ -14,3 +14,10 @@ window.RESIDENT_DESIGN = {
     { id: 'q4', label: '이동 경로', title: '복도와 계단에\n연기나 화염이 있나요?', hint: '이미 알고 있는 상태만 답해주세요. 확인하러 이동하지 마세요.', options: [['지상안전','없고, 지상까지 이동 가능해요','stairs'],['위험','연기나 화염이 있어요','cloud'],['모름','모르겠어요','help']] }
   ]
 };
+// null이면 결과, 숫자이면 다음 질문 인덱스. 화면과 회귀검사가 같은 분기를 사용합니다.
+window.RESIDENT_DESIGN.nextQuestionIndex=function(index,answers){
+ if(index===0&&answers.q1==='우리집')return 2;
+ if(index===1&&answers.q2==='없음'&&['같은층','아래층','위층'].includes(answers.q1))return null;
+ if(index===2&&answers.q3!=='가능하다')return null;
+ return index>=3?null:index+1;
+};

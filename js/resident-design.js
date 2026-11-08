@@ -93,22 +93,18 @@ function question(){
  screen.innerHTML='<section class="screen-content"><div class="question-tools"><button class="back" id="back">'+icon('arrow')+' 이전</button><span class="location-tag">'+esc(locationText())+'</span></div><div class="steps" aria-label="'+(state.step+1)+'번째 질문">'+C.questions.map((_,i)=>'<span class="'+(i<=state.step?'done':'')+'"></span>').join('')+'</div><div class="question-number">질문 '+(state.step+1)+' / '+C.questions.length+' <span> / '+q.label+'</span></div><div class="question-visual" aria-hidden="true">'+icon(['layers','cloud','door','stairs'][state.step])+'</div><h2 class="question-heading" tabindex="-1">'+esc(q.title)+'</h2><p class="question-hint">'+esc(q.hint)+'</p><div class="options">'+q.options.map(o=>'<button class="option" data-tone="'+(['cloud','flame','lock'].includes(o[2])?'hazard':o[2]==='help'?'unknown':'neutral')+'" data-answer="'+esc(o[0])+'">'+icon(o[2])+'<span>'+esc(o[1])+'</span>'+icon('arrow').replace('<svg ','<svg class="chevron" ')+'</button>').join('')+'</div>'+phone('question-phone')+'<p class="question-note">모르는 항목은 ‘모르겠어요’를 선택하세요.</p></section>';
  document.getElementById('back').onclick=()=>{state.preview=false;if(state.step===0)state.phase=0;else{state.step=state.step===2&&state.answers.q1==='우리집'?0:state.step-1;for(let i=state.step;i<C.questions.length;i++)delete state.answers[C.questions[i].id];}move();};
  screen.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>{state.answers[q.id]=b.dataset.answer;state.preview=false;
-  if(q.id==='q1'&&b.dataset.answer==='우리집')state.step=2;
-  else if(q.id==='q2'&&b.dataset.answer==='없음'&&state.answers.q1!=='모름')return finish();
-  else if(q.id==='q3'&&b.dataset.answer!=='가능하다')return finish();
-  else if(state.step===C.questions.length-1)return finish();
-  else state.step++;
+  const next=C.nextQuestionIndex(state.step,state.answers);if(next===null)return finish();state.step=next;
   move();
  });
 }
 function finish(){
- const a={...state.answers};if(['많음','화염'].includes(a.q2))a.q2='많음또는화염';
+ const a={...state.answers};
  state.result=S.decide(a,facility()?.core||{});state.phase=2;move();
 }
 const content={
  A:{title:'계단으로 대피',icon:'stairs',sub:'답변한 이동 경로를 기준으로 한 안내입니다.',steps:[['엘리베이터 대신 계단을 이용하세요.','이동 중 연기·화염이 보이면 무리하게 통과하지 마세요.'],['대피하며 출입문을 닫으세요.','주변 사람에게 화재 사실을 알리세요.'],['안전한 곳에서 119에 위치를 알리세요.','방송과 현장대원의 안내를 따르세요.']]},
  B:{title:'세대 내 대기',icon:'home',tone:'wait',sub:'집 안으로 연기가 들어오지 않는다는 응답 기준입니다.',steps:[['현관문과 창문을 닫으세요.','연기가 집 안으로 들어오지 않도록 하세요.'],['화재 상황과 안내방송을 확인하세요.','연기 유입 등 상황이 달라지면 다시 안내를 확인하세요.'],['119에 현재 위치와 상황을 알리세요.','통화 중 안내에 따라 행동하세요.']]},
- C:{title:'대피공간으로 이동',icon:'shield',tone:'wait',sub:'등록된 세대 내 대피공간의 접근 가능 여부를 확인하세요.',steps:[['접근 가능한 대피공간으로 이동하세요.','이동 경로가 위험하면 무리하게 이동하지 마세요.'],['대피공간의 문을 닫으세요.','연기 유입을 막고 상황을 확인하세요.'],['119에 위치를 알리고 구조를 요청하세요.','현재 있는 공간과 함께 있는 인원을 알려주세요.']]},
+ C:{title:'대피공간 접근 확인',icon:'shield',tone:'wait',sub:'등록된 세대 내 대피공간의 접근 가능 여부를 확인하세요.',steps:[['접근 가능한 대피공간으로 이동하세요.','이동 경로가 위험하면 무리하게 이동하지 마세요.'],['대피공간의 문을 닫으세요.','연기 유입을 막고 상황을 확인하세요.'],['119에 위치를 알리고 구조를 요청하세요.','현재 있는 공간과 함께 있는 인원을 알려주세요.']]},
  D:{title:'하향식 피난구 확인',icon:'down',tone:'danger',sub:'해당 세대에 등록된 피난시설입니다. 설치 정보만으로 현재 이용 가능 여부를 알 수 없습니다.',steps:[['피난구에 안전하게 접근할 수 있는지 확인하세요.','접근이 어렵거나 상태를 모르면 무리하게 사용하지 마세요.'],['아래 세대의 안전과 이용 가능 여부가 필요합니다.','연기·화염이 있거나 이용이 어려우면 이동하지 마세요.'],['119에 위치와 상황을 알리세요.','시설 이용과 구조에 관한 안내를 받으세요.']]},
  E:{title:'경량칸막이 확인',icon:'door',tone:'danger',sub:'해당 세대에 등록된 피난시설입니다. 현재 접근·이용 가능 여부가 필요합니다.',steps:[['등록된 경량칸막이 위치를 확인하세요.','일반 벽과 혼동하지 마세요.'],['이동할 곳의 상태를 모르면 무리하게 이동하지 마세요.','시설 설치 여부와 현재 경로의 안전은 다를 수 있어요.'],['119에 위치와 상황을 알리세요.','시설 이용과 구조에 관한 안내를 받으세요.']]},
  F:{title:'119에 구조 요청',icon:'phone',tone:'danger',sub:'대피 경로나 피난시설의 이용 가능 여부를 확인하지 못했습니다.',steps:[['무리하게 위험한 경로로 이동하지 마세요.','확인하려고 연기·화염이 있는 곳에 접근하지 마세요.'],['화염·연기에서 떨어진 곳에서 문을 닫으세요.','가능하면 문틈으로 들어오는 연기를 막으세요.'],['119에 현재 위치를 알리고 구조를 요청하세요.','동·호수, 연기 상태, 함께 있는 인원을 알려주세요.']]}
@@ -116,7 +112,7 @@ const content={
 function residentFacilities(f){
  const c=S.ComplexInfo.resolve(state.loc),values=c?.fire?.fields||[],cards=[];
  const present=v=>typeof v==='string'&&/설치|가능|비치|해당/.test(v)&&!/^미|없|불가/.test(v.trim());
- const card=(title,value,source,ic)=>'<div class="resident-facility">'+icon(ic)+'<div><strong>'+esc(title)+'</strong><small>'+esc(value)+' · '+esc(source)+'</small></div></div>';
+ const card=(title,value,source,ic)=>'<button type="button" class="resident-facility" data-facility-guide="'+esc(title)+'" aria-haspopup="dialog">'+icon(ic)+'<div><strong>'+esc(title)+'</strong><small>'+esc(value)+' · '+esc(source)+'</small><span class="guide-cue">사용법 보기 ›</span></div></button>';
  for(const [key,label,index,ic]of [['lightPartition','경량칸막이',0,'door'],['inUnitShelter','대피공간',2,'shield'],['downwardEvacuationHatch','하향식 피난구',8,'down']]){
   const v=f?.core?.[key];if(v===true)cards.push(card(label,'설치','세대 등록',ic));
   else if(v!==false&&present(values[index]))cards.push(card(label,values[index],'단지 등록 · 내 세대 미확인',ic));
@@ -129,6 +125,7 @@ function residentFacilities(f){
 function result(){
  const r=content[state.result.key]||content.F,f=facility();
  screen.innerHTML='<section class="screen-content compact-result"><div class="result-head"><h2 tabindex="-1">지금 필요한 행동</h2><button class="text-button" id="restart">위치·답변 수정</button></div>'+(state.preview?'<div class="alert-inline">디자인 확인용 결과 예시입니다. 실제 답변으로 판정한 결과가 아닙니다.</div>':'')+'<div class="result-card '+(r.tone||'')+'"><span class="result-label">현재 권장 행동 · 디자인 데모</span><span class="result-icon">'+icon(r.icon)+'</span><h3>'+r.title+'</h3><p>'+r.sub+'</p></div><div class="reason">'+icon('pin')+'<span>'+esc(locationText())+'<br>'+esc(state.preview?'예시 화면':state.result.notes[0])+'</span></div><section class="immediate-actions" aria-labelledby="immediate-title"><h3 class="action-title" id="immediate-title">지금 바로 할 일</h3><ol class="action-list">'+r.steps.map(x=>'<li><div><strong>'+x[0]+'</strong><small>'+x[1]+'</small></div></li>').join('')+'</ol></section>'+residentFacilities(f)+phone()+'<div class="utility-row"><button class="button secondary" id="update">'+icon('refresh')+'상황이 달라졌어요</button><button class="button secondary" id="voice">'+icon('speaker')+'음성으로 듣기</button></div><details class="facility-details"><summary>현재 위치 · 인원 · 이동 도움 (선택)</summary><label>현재 위치<input id="current-place" maxlength="100" placeholder="예: 안방, 발코니" value="'+esc(state.preview?'':state.details.currentPlace)+'"></label><label>본인을 포함한 현재 인원<input id="resident-count" type="number" min="1" max="999" step="1" placeholder="미확인" value="'+esc(state.preview?'':state.details.occupants)+'"></label><label class="field">혼자 이동하기 어려워 도움이 필요한 사람이 있나요?<select id="resident-help"><option value="unknown">미확인</option><option value="yes">있어요 · 이동 도움 필요</option><option value="no">없어요</option></select></label></details><button class="button secondary" id="save" '+(state.preview?'disabled':'')+'>'+icon('save')+'내 상태 저장 · 데모</button><p class="save-note">브라우저 내부 저장입니다. 실제 119 신고는 접수되지 않습니다.</p></section>';
+ screen.querySelectorAll('[data-facility-guide]').forEach(b=>b.onclick=()=>S.FacilityGuide.open(b.dataset.facilityGuide,b.querySelector('small').textContent));
  document.getElementById('resident-help').value=state.preview?'unknown':state.details.hasVulnerable===true?'yes':state.details.hasVulnerable===false?'no':'unknown';
  for(const id of ['current-place','resident-count','resident-help'])document.getElementById(id).addEventListener('input',captureDetails);
  document.getElementById('restart').onclick=()=>{captureDetails();state.phase=0;state.preview=false;move();};
