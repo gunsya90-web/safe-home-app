@@ -1,5 +1,5 @@
 /* SAFE-HOME · sw.js — 대피 안내 화면이 오프라인/네트워크 불안정 상황에서도 열리도록 앱 셸을 캐시한다. */
-var CACHE_NAME = 'safehome-shell-v5-resident-bright-3';
+var CACHE_NAME = 'safehome-shell-v5-directory-4';
 var SHELL_FILES = [
   './',
   './index.html',
@@ -15,7 +15,7 @@ var SHELL_FILES = [
   './js/workspace-refresh.js',
   './js/data.js',
   './js/complex-info.js',
-  './js/complex-reference-data.js',
+  './js/complex-directory.js',
   './css/complex-info.css',
   './js/csv.js',
   './js/ui.js',

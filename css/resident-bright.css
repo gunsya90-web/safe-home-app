@@ -76,3 +76,4 @@ body.sh-resident #screen .phone-button{background:#be3525!important;border-color
  .sh-resident .question-number{font-size:13px}
  .sh-resident .option:focus-visible{outline:3px solid #102c42;outline-offset:3px}
 }
+.directory-note{font-size:12px;color:#4c637b;line-height:1.5;margin:0 0 10px}.directory-note:empty{display:none}

@@ -60,17 +60,24 @@ function focusHeading(){screen.querySelector('h2')?.focus({preventScroll:true});
 function move(){render();document.getElementById('app-shell').scrollIntoView({block:'start',behavior:'auto'});focusHeading();}
 function start(){
  const l=state.loc;
- screen.innerHTML='<section class="screen-content"><div class="section-kicker">01 · 내 위치 확인</div><h2 class="screen-heading" tabindex="-1">지금 어디에 있나요?</h2><p class="screen-sub">아파트를 찾고 동·호수를 입력하세요.</p><div class="location-visual" aria-hidden="true"><div class="visual-copy"><strong>우리 집을 위한 안전 안내</strong>세대별 피난시설과 함께 확인해요.</div><div class="buildings"><span class="map-pin">'+icon('pin')+'</span>'+[0,1,2].map(()=>'<div class="building">'+Array(8).fill('<i></i>').join('')+'</div>').join('')+'</div></div><form id="location-form"><label class="field"><span>아파트 이름</span><div class="field-wrap">'+icon('search')+'<input id="apt" name="apt" placeholder="예: 센텀, 혁신 센텀힐즈" autocomplete="off" maxlength="80" value="'+esc(l.apt)+'" required></div></label><div id="suggestions" class="suggestions" aria-label="아파트 검색 결과"></div><div class="field-row"><label class="field"><span>동</span><input id="dong" name="dong" inputmode="numeric" placeholder="예: 101" maxlength="12" value="'+esc(l.dong)+'" required></label><label class="field"><span>호수</span><input id="ho" name="ho" inputmode="numeric" placeholder="예: 501" maxlength="12" value="'+esc(l.ho)+'" required></label></div><p id="form-error" class="form-error" role="alert" hidden></p><button class="button primary" type="submit">'+icon('pin')+'<span class="button-label">이 위치로 안내 시작</span>'+icon('arrow')+'</button></form>'+phone()+'<button class="text-button" id="skip-location">위치를 모르겠어요</button><p class="micro-note">'+icon('info')+'<span>아파트 시설정보는 마지막 안내에서 확인할 수 있어요.</span></p></section>';
+ screen.innerHTML='<section class="screen-content"><div class="section-kicker">01 · 내 위치 확인</div><h2 class="screen-heading" tabindex="-1">지금 어디에 있나요?</h2><p class="screen-sub">아파트를 찾고 동·호수를 입력하세요.</p><div class="location-visual" aria-hidden="true"><div class="visual-copy"><strong>우리 집을 위한 안전 안내</strong>세대별 피난시설과 함께 확인해요.</div><div class="buildings"><span class="map-pin">'+icon('pin')+'</span>'+[0,1,2].map(()=>'<div class="building">'+Array(8).fill('<i></i>').join('')+'</div>').join('')+'</div></div><form id="location-form"><label class="field"><span>아파트 이름</span><div class="field-wrap">'+icon('search')+'<input id="apt" name="apt" placeholder="예: 센텀, 혁신 센텀힐즈" autocomplete="off" maxlength="80" value="'+esc(l.apt)+'" required></div></label><div id="suggestions" class="suggestions" aria-label="아파트 검색 결과"></div><div class="field-row"><label class="field"><span>동</span><input id="dong" list="dong-options" name="dong" inputmode="numeric" placeholder="예: 101" maxlength="12" value="'+esc(l.dong)+'" required></label><label class="field"><span>호수</span><input id="ho" list="ho-options" name="ho" inputmode="numeric" placeholder="예: 501" maxlength="12" value="'+esc(l.ho)+'" required></label></div><datalist id="dong-options"></datalist><datalist id="ho-options"></datalist><p id="unit-directory-note" class="directory-note"></p><p id="form-error" class="form-error" role="alert" hidden></p><button class="button primary" type="submit">'+icon('pin')+'<span class="button-label">이 위치로 안내 시작</span>'+icon('arrow')+'</button></form>'+phone()+'<button class="text-button" id="skip-location">위치를 모르겠어요</button><p class="micro-note">'+icon('info')+'<span>아파트 시설정보는 마지막 안내에서 확인할 수 있어요.</span></p></section>';
  const apt=document.getElementById('apt'), dong=document.getElementById('dong');
+ function updateUnitOptions(){
+  const c=state.loc.complexCode?S.ComplexInfo.resolve(state.loc):null,bs=c?.buildings||[],d=dong.value.trim().replace(/동$/,''),b=bs.find(x=>x.dong===d);
+  document.getElementById('dong-options').innerHTML=bs.map(x=>'<option value="'+esc(x.dong)+'">'+esc(x.dong)+'동</option>').join('');
+  document.getElementById('ho-options').innerHTML=(b?.units||[]).map(h=>'<option value="'+esc(h)+'">'+esc(h)+'호</option>').join('');
+  document.getElementById('unit-directory-note').textContent=c?(bs.length?(b?'대장 등록 호수 선택 또는 직접 입력':'동을 선택하면 대장 등록 호수가 표시됩니다.'):'동·호수 목록 준비 중 · 직접 입력해주세요.'):'';
+ }
+ dong.addEventListener('input',updateUnitOptions);updateUnitOptions();
  function updateStartLabel(){const d=dong.value.trim().replace(/동$/,''),h=document.getElementById('ho').value.trim().replace(/호$/,'');document.querySelector('#location-form .button-label').textContent=d&&h?d+'동 '+h+'호로 안내 시작':'동·호수 입력 후 안내 시작';}
  for(const id of ['apt','dong','ho'])document.getElementById(id).addEventListener('input',updateStartLabel);
  updateStartLabel();
  apt.addEventListener('input',()=>{
   const q=apt.value.trim(), box=document.getElementById('suggestions');
-  state.loc.complexCode=null;
+  state.loc.complexCode=null;updateUnitOptions();
   const matches=S.ComplexInfo.search(q), demos=[...new Set(Object.values(S.BUILDINGS).map(b=>b.apt))].filter(n=>n.includes(q)&&!matches.some(c=>c.name===n));
   box.innerHTML=q?matches.map(c=>'<button type="button" data-code="'+esc(c.code)+'" data-apt="'+esc(c.name)+'">'+esc(c.name)+'<small>'+esc(c.address)+'</small></button>').join('')+demos.slice(0,3).map(n=>'<button type="button" data-apt="'+esc(n)+'">'+esc(n)+'</button>').join(''):'';
-  box.querySelectorAll('button').forEach(b=>b.onclick=()=>{apt.value=b.dataset.apt;state.loc.complexCode=b.dataset.code||null;state.loc.apt=apt.value;updateStartLabel();box.innerHTML='';dong.focus();});
+  box.querySelectorAll('button').forEach(b=>b.onclick=()=>{if(state.loc.complexCode!==(b.dataset.code||null)||state.loc.apt!==b.dataset.apt){dong.value='';document.getElementById('ho').value='';}apt.value=b.dataset.apt;state.loc.complexCode=b.dataset.code||null;state.loc.apt=apt.value;updateUnitOptions();updateStartLabel();box.innerHTML='';dong.focus();});
  });
  document.getElementById('location-form').onsubmit=e=>{e.preventDefault();
   const l={complexCode:state.loc.complexCode||null,apt:apt.value.trim(),dong:dong.value.trim().replace(/동$/,''),ho:document.getElementById('ho').value.trim().replace(/호$/,'')};
@@ -117,7 +124,7 @@ function residentFacilities(f){
  const roof=[];if(present(values[1]))roof.push('옥상 대피 '+values[1]);if(present(values[7]))roof.push('최상층 기계실 있음');if(present(values[3]))roof.push('옥상문 자동개폐');
  if(roof.length)cards.push(card('옥상 피난정보',roof.join(' / '),'단지 등록','up'));
  for(const [index,label,ic]of [[4,'피난안전구역','shield'],[6,'공기안전매트','layers']])if(present(values[index]))cards.push(card(label,values[index],'단지 등록',ic));
- return '<section class="resident-facilities"><h3>등록된 피난·소방시설</h3>'+(cards.length?'<div class="resident-facility-grid">'+cards.join('')+'</div><p>단지 등록은 내 세대 설치·현재 사용 가능을 뜻하지 않습니다.</p>':'<p>등록된 시설정보 없음 · 실제 설치 여부 미확인</p>')+'</section>';
+ return '<section class="resident-facilities"><h3>등록된 피난·소방시설</h3>'+(cards.length?'<div class="resident-facility-grid">'+cards.join('')+'</div><p>단지 등록은 내 세대 설치·현재 사용 가능을 뜻하지 않습니다.</p>':'<p>이 세대·단지의 시설정보가 아직 확인되지 않았습니다.</p>')+'</section>';
 }
 function result(){
  const r=content[state.result.key]||content.F,f=facility();

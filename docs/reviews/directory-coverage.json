@@ -1,0 +1,16 @@
+{
+  "complexes": 1188,
+  "facilityRows": 725,
+  "unitComplexes": 3,
+  "buildings": 10,
+  "units": 1620,
+  "excludedRows": {
+    "비주거 또는 혼합용도": 734,
+    "주소·동 유일대조 불가": 286
+  },
+  "hubScope": [
+    "2711010100"
+  ],
+  "rawSha256": "dcea2050cb3b2464880aed2f2879e75469ebeb35a2724216572cb5a3636405c9",
+  "operationalSnapshotsChanged": false
+}
