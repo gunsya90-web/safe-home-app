@@ -53,7 +53,7 @@ function phone(extra=''){return '<a href="tel:119" class="button phone-button '+
 function render(){
  window.speechSynthesis?.cancel();
  document.querySelectorAll('[data-phase]').forEach(e=>e.classList.toggle('active',Number(e.dataset.phase)===state.phase));
- if(state.phase===0)start();else if(state.phase===1)question();else result();
+ if(state.phase===0)start();else if(state.phase===1)question();else if(state.phase===3)facilityQuestion();else result();
  icons(screen);showSaved();
 }
 function focusHeading(){screen.querySelector('h2')?.focus({preventScroll:true});}
@@ -87,7 +87,7 @@ function start(){
  };
  document.getElementById('skip-location').onclick=()=>{state.loc={apt:'',dong:'',ho:'',buildingId:null};begin();};
 }
-function begin(){state.phase=1;state.step=0;state.answers={};state.result=null;state.preview=false;move();}
+function begin(){state.phase=1;state.step=0;state.answers={};state.facilityQueue=[];state.result=null;state.preview=false;move();}
 function question(){
  const q=C.questions[state.step];
  screen.innerHTML='<section class="screen-content"><div class="question-tools"><button class="back" id="back">'+icon('arrow')+' 이전</button><span class="location-tag">'+esc(locationText())+'</span></div><div class="steps" aria-label="'+(state.step+1)+'번째 질문">'+C.questions.map((_,i)=>'<span class="'+(i<=state.step?'done':'')+'"></span>').join('')+'</div><div class="question-number">질문 '+(state.step+1)+' / '+C.questions.length+' <span> / '+q.label+'</span></div><div class="question-visual" aria-hidden="true">'+icon(['layers','cloud','door','stairs'][state.step])+'</div><h2 class="question-heading" tabindex="-1">'+esc(q.title)+'</h2><p class="question-hint">'+esc(q.hint)+'</p><div class="options">'+q.options.map(o=>'<button class="option" data-tone="'+(['cloud','flame','lock'].includes(o[2])?'hazard':o[2]==='help'?'unknown':'neutral')+'" data-answer="'+esc(o[0])+'">'+icon(o[2])+'<span>'+esc(o[1])+'</span>'+icon('arrow').replace('<svg ','<svg class="chevron" ')+'</button>').join('')+'</div>'+phone('question-phone')+'<p class="question-note">모르는 항목은 ‘모르겠어요’를 선택하세요.</p></section>';
@@ -98,9 +98,32 @@ function question(){
  });
 }
 function finish(){
- const a={...state.answers};
- state.result=S.decide(a,facility()?.core||{});state.phase=2;move();
+ const initial=S.decide(state.answers,{});
+ if(!['A','B'].includes(initial.key)){
+  state.facilityQueue=C.facilityCandidates(facility()?.core,S.ComplexInfo.resolve(state.loc)?.fire?.fields);
+  state.facilityIndex=0;state.answers.facilityChecks={};
+  if(state.facilityQueue.length){state.phase=3;move();return;}
+ }
+ completeResult();
 }
+function completeResult(){
+ state.result=S.decide(state.answers,C.confirmedFacilityCore(state.answers.facilityChecks));
+ const selected=state.facilityQueue?.find(c=>state.answers.facilityChecks?.[c.key]==='yes');
+ if(selected){state.result.notes=state.result.notes.filter(n=>!n.startsWith('등록정보:'));state.result.notes.unshift('입주민 현재 응답: '+selected.label+' 설치·접근 가능 확인 (시설대장 검증 아님)');}
+ state.phase=2;move();
+}
+function facilityQuestion(){
+ const c=state.facilityQueue[state.facilityIndex],adjacent=c.key==='lightPartition'?'옆 세대로 이동할 수 있는지도 알고 있나요?':c.key==='downwardEvacuationHatch'?'아래 세대와 피난장치를 이용할 수 있는지도 알고 있나요?':'';
+ screen.innerHTML='<section class="screen-content"><button class="back" id="facility-back">← 상황 질문 다시 확인</button><div class="question-number">피난시설 확인 · '+(state.facilityIndex+1)+' / '+state.facilityQueue.length+'</div><div class="question-visual" aria-hidden="true">'+icon(c.icon)+'</div><h2 class="question-heading" tabindex="-1">우리 집에 '+esc(c.label)+(c.key==='inUnitShelter'?'이':'가')+' 있고,<br>안전하게 갈 수 있나요?</h2><p class="question-hint">'+esc(c.source)+'<br>지금 알고 있는 내용만 답해주세요. 확인하러 위험한 곳으로 이동하지 마세요.</p>'+(adjacent?'<p class="alert-inline">'+esc(adjacent)+'</p>':'')+'<div class="options"><button class="option" data-facility-answer="yes">'+icon(c.icon)+'<span>'+(adjacent?'네, 접근·이동 가능해요':'네, 있고 안전하게 갈 수 있어요')+'</span></button><button class="option" data-facility-answer="no" data-tone="hazard">'+icon('lock')+'<span>없거나 갈 수 없어요</span></button><button class="option" data-facility-answer="unknown" data-tone="unknown">'+icon('help')+'<span>모르겠어요</span></button></div><button class="text-button" id="check-facility-guide">'+esc(c.label)+' 사용법 보기</button>'+phone()+'</section>';
+ document.getElementById('facility-back').onclick=begin;
+ document.getElementById('check-facility-guide').onclick=()=>S.FacilityGuide.open(c.label,c.source);
+ screen.querySelectorAll('[data-facility-answer]').forEach(b=>b.onclick=()=>{
+  state.answers.facilityChecks[c.key]=b.dataset.facilityAnswer;
+  if(b.dataset.facilityAnswer==='yes')return completeResult();
+  state.facilityIndex++;if(state.facilityIndex>=state.facilityQueue.length)return completeResult();move();
+ });
+}
+
 const content={
  A:{title:'계단으로 대피',icon:'stairs',sub:'답변한 이동 경로를 기준으로 한 안내입니다.',steps:[['엘리베이터 대신 계단을 이용하세요.','이동 중 연기·화염이 보이면 무리하게 통과하지 마세요.'],['대피하며 출입문을 닫으세요.','주변 사람에게 화재 사실을 알리세요.'],['안전한 곳에서 119에 위치를 알리세요.','방송과 현장대원의 안내를 따르세요.']]},
  B:{title:'세대 내 대기',icon:'home',tone:'wait',sub:'집 안으로 연기가 들어오지 않는다는 응답 기준입니다.',steps:[['현관문과 창문을 닫으세요.','연기가 집 안으로 들어오지 않도록 하세요.'],['화재 상황과 안내방송을 확인하세요.','연기 유입 등 상황이 달라지면 다시 안내를 확인하세요.'],['119에 현재 위치와 상황을 알리세요.','통화 중 안내에 따라 행동하세요.']]},
@@ -114,7 +137,7 @@ function residentFacilities(f){
  const present=v=>typeof v==='string'&&/설치|가능|비치|해당/.test(v)&&!/^미|없|불가/.test(v.trim());
  const card=(title,value,source,ic)=>'<button type="button" class="resident-facility" data-facility-guide="'+esc(title)+'" aria-haspopup="dialog">'+icon(ic)+'<div><strong>'+esc(title)+'</strong><small>'+esc(value)+' · '+esc(source)+'</small><span class="guide-cue">사용법 보기 ›</span></div></button>';
  for(const [key,label,index,ic]of [['lightPartition','경량칸막이',0,'door'],['inUnitShelter','대피공간',2,'shield'],['downwardEvacuationHatch','하향식 피난구',8,'down']]){
-  const v=f?.core?.[key];if(v===true)cards.push(card(label,'설치','세대 등록',ic));
+  const v=f?.core?.[key];if(state.answers.facilityChecks?.[key]==='yes')cards.push(card(label,'접근 가능 응답','입주민 현재 확인',ic));else if(v===true)cards.push(card(label,'설치','세대 등록',ic));
   else if(v!==false&&present(values[index]))cards.push(card(label,values[index],'단지 등록 · 내 세대 미확인',ic));
  }
  const roof=[];if(present(values[1]))roof.push('옥상 대피 '+values[1]);if(present(values[7]))roof.push('최상층 기계실 있음');if(present(values[3]))roof.push('옥상문 자동개폐');
@@ -123,7 +146,9 @@ function residentFacilities(f){
  return '<section class="resident-facilities"><h3>등록된 피난·소방시설</h3>'+(cards.length?'<div class="resident-facility-grid">'+cards.join('')+'</div><p>단지 등록은 내 세대 설치·현재 사용 가능을 뜻하지 않습니다.</p>':'<p>이 세대·단지의 시설정보가 아직 확인되지 않았습니다.</p>')+'</section>';
 }
 function result(){
- const r=content[state.result.key]||content.F,f=facility();
+ const confirmed=Object.values(state.answers.facilityChecks||{}).includes('yes');
+ const base=content[state.result.key]||content.F,r={...base},f=facility();
+ if(confirmed){r.sub='우리 집에 있고 안전하게 접근·이동할 수 있다는 현재 응답 기준입니다.';if(state.result.key==='C')r.title='대피공간으로 이동';}
  screen.innerHTML='<section class="screen-content compact-result"><div class="result-head"><h2 tabindex="-1">지금 필요한 행동</h2><button class="text-button" id="restart">위치·답변 수정</button></div>'+(state.preview?'<div class="alert-inline">디자인 확인용 결과 예시입니다. 실제 답변으로 판정한 결과가 아닙니다.</div>':'')+'<div class="result-card '+(r.tone||'')+'"><span class="result-label">현재 권장 행동 · 디자인 데모</span><span class="result-icon">'+icon(r.icon)+'</span><h3>'+r.title+'</h3><p>'+r.sub+'</p></div><div class="reason">'+icon('pin')+'<span>'+esc(locationText())+'<br>'+esc(state.preview?'예시 화면':state.result.notes[0])+'</span></div><section class="immediate-actions" aria-labelledby="immediate-title"><h3 class="action-title" id="immediate-title">지금 바로 할 일</h3><ol class="action-list">'+r.steps.map(x=>'<li><div><strong>'+x[0]+'</strong><small>'+x[1]+'</small></div></li>').join('')+'</ol></section>'+residentFacilities(f)+phone()+'<div class="utility-row"><button class="button secondary" id="update">'+icon('refresh')+'상황이 달라졌어요</button><button class="button secondary" id="voice">'+icon('speaker')+'음성으로 듣기</button></div><details class="facility-details"><summary>현재 위치 · 인원 · 이동 도움 (선택)</summary><label>현재 위치<input id="current-place" maxlength="100" placeholder="예: 안방, 발코니" value="'+esc(state.preview?'':state.details.currentPlace)+'"></label><label>본인을 포함한 현재 인원<input id="resident-count" type="number" min="1" max="999" step="1" placeholder="미확인" value="'+esc(state.preview?'':state.details.occupants)+'"></label><label class="field">혼자 이동하기 어려워 도움이 필요한 사람이 있나요?<select id="resident-help"><option value="unknown">미확인</option><option value="yes">있어요 · 이동 도움 필요</option><option value="no">없어요</option></select></label></details><button class="button secondary" id="save" '+(state.preview?'disabled':'')+'>'+icon('save')+'내 상태 저장 · 데모</button><p class="save-note">브라우저 내부 저장입니다. 실제 119 신고는 접수되지 않습니다.</p></section>';
  screen.querySelectorAll('[data-facility-guide]').forEach(b=>b.onclick=()=>S.FacilityGuide.open(b.dataset.facilityGuide,b.querySelector('small').textContent));
  document.getElementById('resident-help').value=state.preview?'unknown':state.details.hasVulnerable===true?'yes':state.details.hasVulnerable===false?'no':'unknown';

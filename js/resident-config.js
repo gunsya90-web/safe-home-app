@@ -21,3 +21,8 @@ window.RESIDENT_DESIGN.nextQuestionIndex=function(index,answers){
  if(index===2&&answers.q3!=='가능하다')return null;
  return index>=3?null:index+1;
 };
+// 단지 등록은 질문 후보만 만듭니다. 판정에는 현재 입주민 응답만 전달합니다.
+window.RESIDENT_DESIGN.facilityCandidates=function(core,fields){
+ return [['inUnitShelter','대피공간',2,'shield'],['lightPartition','경량칸막이',0,'door'],['downwardEvacuationHatch','하향식 피난구',8,'down']].filter(([k,,i])=>core?.[k]===true||(core?.[k]!==false&&['설치','일부설치'].includes(fields?.[i]))).map(([key,label,index,icon])=>({key,label,icon,source:core?.[key]===true?'세대 등록정보':'단지 등록정보 · '+fields[index]}));
+};
+window.RESIDENT_DESIGN.confirmedFacilityCore=function(checks){return Object.fromEntries(['inUnitShelter','lightPartition','downwardEvacuationHatch'].map(k=>[k,checks?.[k]==='yes'?true:null]));};
