@@ -214,7 +214,7 @@
       suppression: { indoorHydrant: true, sprinkler: false, waterSprayConnection: false },
       search: {
         hoistRoomStructure: '최상층(9층) 계단실 옆 권상기실 → 옥상문. 손전등 없이는 식별 어려운 철제 사다리 있음.',
-        roofAccessRoute: '9층 계단실 → 권상기실 통과 → 옥상문(차동개폐장치 설치, 자동 개방). 옥상 면적 넓어 헬기 인명구조 가능.',
+        roofAccessRoute: '9층 계단실 → 권상기실 → 옥상문. 자동개폐장치 있음. 철제 사다리·어두운 구간 주의.',
         hiddenStairs: '도면 미표기 계단 없음. 101동은 단일 계단실 구조.',
         midFireDoors: '5층·8층 계단실 진입부에 방화문 2개소 — 상시 닫힘, 손잡이형.',
         duplexUnits: ['801', '901'],
@@ -233,7 +233,7 @@
       suppression: { indoorHydrant: true, sprinkler: true, waterSprayConnection: false },
       search: {
         hoistRoomStructure: '최상층(12층) 중앙 복도 끝 권상기실. 이중 잠금장치 있어 소방 마스터키 필요.',
-        roofAccessRoute: '옥상 대피 불가 등록 건물 — 옥상문이 상시 시건 상태로 관리되며 자동개폐장치 없음.',
+        roofAccessRoute: '옥상 대피 불가 등록. 옥상문 잠김 · 자동개폐장치 없음.',
         hiddenStairs: '동 측면에 관리사무소 전용 비상계단 1개소 있음 (일반 입주민 도면 미표기).',
         midFireDoors: '각 층 복도 중앙에 방화문 1개소 — 자동폐쇄장치 설치.',
         duplexUnits: [],
@@ -252,7 +252,7 @@
       suppression: { indoorHydrant: true, sprinkler: true, waterSprayConnection: true },
       search: {
         hoistRoomStructure: '최상층(20층) 권상기실 2개소(A/B 라인 분리). 옥상문 수동 개방(자동개폐장치 없음).',
-        roofAccessRoute: '20층 각 라인 계단실 → 권상기실 통과 → 옥상문(수동). 고층 강풍 주의.',
+        roofAccessRoute: '20층 계단실 → 권상기실 → 옥상문. 수동 개방 · 강풍 주의.',
         hiddenStairs: '없음. A/B 라인 계단실이 명확히 분리된 구조.',
         midFireDoors: '10층·15층 피난안전구역 진입부에 방화문 각 1개소.',
         duplexUnits: [],

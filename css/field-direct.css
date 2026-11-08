@@ -1,0 +1,34 @@
+/* 현장 상세: 메뉴를 열지 않고 읽고 선택하는 구성 */
+#detail .detail-head{background:#e6f1ff;color:#193b63;border-bottom:1px solid #bfd4ee}
+#detail .detail-head p,#detail .detail-head .eyebrow{color:#46607c}
+.field-section-jumps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:12px;background:#f3f7fc;border-bottom:1px solid #d8e4f1}
+.field-section-jumps button{min-height:44px;padding:7px 3px;border:1px solid #c1d3e8;border-radius:8px;background:#fff;color:#215389;font-size:13px;font-weight:700}
+#detail .field-direct-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:7px 0}
+#detail .field-direct-choices button{min-height:46px;background:#fff;border:1px solid #b7cce2;border-radius:9px;color:#25476b;font-size:14px;padding:8px}
+#detail .field-direct-choices button[aria-pressed=true]{background:#2065b7;border-color:#2065b7;color:white;font-weight:700}
+#detail select[hidden]{display:none!important}
+#detail .status-options{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#detail .status-choice:last-child{grid-column:auto}
+#detail .status-choice{min-height:48px;font-size:15px}
+#detail .status-choice[data-status=danger]{background:#ffebe6;color:#992f23}
+#detail .status-choice[data-status=rescuing]{background:#fff0cf;color:#815515}
+#detail .status-choice[data-status=waiting]{background:#e5f0ff;color:#245797}
+#detail .status-choice[data-status=moving]{background:#fff4db;color:#795715}
+#detail .status-choice[data-status=safe]{background:#e3f5ec;color:#246a4b}
+#detail .status-choice.selected{outline:2px solid #1c538e;outline-offset:1px;font-weight:800}
+#detail .unit-tool{border-radius:12px;border-color:#c7d8e9;background:#f8fbff;padding:14px;scroll-margin-top:10px}
+#detail .search-tool{border-top:4px solid #3d79c2;background:#f0f6ff}
+#detail .unit-tool:nth-child(2){border-top:4px solid #359573;background:#f0f9f5}
+#detail .unit-tool:nth-child(3){border-top:4px solid #c48b29;background:#fffaef}
+#detail .unit-tool summary{font-size:17px;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+#detail .unit-tool summary b{font-size:13px}
+#detail .unit-tool label,#detail .structure-line,#detail .structure-line p{font-size:14px}
+#detail .tool-note,#detail .tool-error,#detail .tool-warning{font-size:13px;color:#4a6077}
+#detail .tool-error,#detail .tool-warning{color:#a73425}
+#detail .tool-save{min-height:48px;font-size:15px;background:#2466b4}
+#detail .tool-facilities{grid-template-columns:1fr;gap:7px}
+#detail .tool-facilities>div{display:grid;grid-template-columns:1fr auto;text-align:left;padding:10px;font-size:14px;background:white;border:1px solid #cce2d8}
+#detail .tool-facilities strong{font-size:14px;margin:0}
+#detail .tool-facilities small{grid-column:1/-1;font-size:12px;margin-top:5px;color:#4a6077}
+#detail .tool-link{min-height:44px;padding:12px 0;font-size:14px}
+#detail #field-form,#detail .report-card,#detail #unit-logs{scroll-margin-top:12px}
