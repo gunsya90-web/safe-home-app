@@ -6,3 +6,11 @@ Thumbs.db
 # 대구 아파트 정보 가져오기 스크립트 관련 — 서비스키/결과물이 실수로라도 공개 저장소에 커밋되지 않도록
 tools/daegu-import/.env
 tools/daegu-import/*.csv
+
+# 공공 API 인증키·수집 원본
+.env
+.env.*
+private-data/
+
+# 재공개 조건 확인 전 로컬 전용 단지 참고자료
+js/complex-reference-data.js

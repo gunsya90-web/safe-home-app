@@ -1,0 +1,5 @@
+const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
+const {request}=require('./request.cjs');
+function pageId(url){const u=new URL(url);u.searchParams.delete('serviceKey');u.searchParams.sort();return crypto.createHash('sha256').update(u.toString()).digest('hex');}
+async function cachedRequest(url,dir,{loader=request}={}){const id=pageId(url),file=path.join(dir,id+'.json');try{const saved=JSON.parse(await fs.readFile(file,'utf8'));if(saved.id!==id||!saved.body)throw Error('페이지 저장 파일 검증 실패');return saved.body;}catch(e){if(e.code!=='ENOENT')throw e;}const body=await loader(url);const key=new URL(url).searchParams.get('serviceKey');const text=JSON.stringify({id,receivedAt:new Date().toISOString(),body});if(key&&[key,encodeURIComponent(key)].some(k=>text.includes(k)))throw Error('페이지 비밀값 검사 실패');await fs.mkdir(dir,{recursive:true,mode:0o700});await fs.writeFile(file+'.tmp',text,{mode:0o600});await fs.rename(file+'.tmp',file);return body;}
+module.exports={pageId,cachedRequest};

@@ -1,0 +1,78 @@
+/* 입주민 화면 전용. 질문 순서와 판정은 기존 로직을 사용합니다. */
+body.sh-resident{background:#f2f7fd;color:#183451}
+.sh-resident .brand-symbol{background:#e1efff;color:#2068ba}
+.sh-resident .brand-red{color:#1765d8}
+.sh-resident .app-shell{background:#fff;border-color:#d9e5f2;box-shadow:0 10px 34px #224d7b0a}
+.sh-resident .screen-content{padding:24px}
+.sh-resident .section-kicker,.sh-resident .question-number{color:#2466b9;font-size:13px}
+.sh-resident .screen-heading,.sh-resident .question-heading{color:#183451;font-size:28px;line-height:1.35}
+.sh-resident .screen-sub,.sh-resident .question-hint{color:#4c637b;font-size:max(16px,1em)}
+.sh-resident .location-visual{display:flex;background:#e5f2ff;height:112px;margin:18px 0 22px;border-radius:16px;padding:18px}
+.sh-resident .visual-copy{max-width:55%;color:#486883;font-size:12px}
+.sh-resident .visual-copy strong{font-size:16px;color:#1e5088}
+.sh-resident .building{background:#2774c9}.sh-resident .building:nth-child(2){background:#4d93d9}.sh-resident .building:nth-child(3){background:#91bee9}
+.sh-resident .map-pin{color:#dc6338}
+.sh-resident .field>span{font-size:16px;color:#183451;font-weight:700}
+.sh-resident .field-wrap input{border:1px solid #a7c1dc!important;background:#fafdff}
+.sh-resident .field-row input{border-color:#a7c1dc;background:#fafdff}
+body.sh-resident #screen .primary{background:#1765d8!important;color:#fff!important;border-radius:12px;min-height:60px}
+body.sh-resident #screen .phone-button{background:#be3525!important;border-color:#be3525!important;color:#fff!important;border-radius:12px;font-weight:750}
+.sh-resident .question-tools{margin-bottom:12px}.sh-resident .steps{margin-bottom:14px}
+.sh-resident .steps .done{background:#2875d8}
+.sh-resident .question-visual{display:flex;align-items:center;justify-content:center;height:76px;background:#e6f2ff;color:#286ac0;border-radius:14px;margin:12px 0}
+.sh-resident .question-visual svg{height:48px;width:48px;stroke-width:1.7}
+.sh-resident .question-heading{margin:12px 0 8px}
+.sh-resident .question-hint{min-height:0;margin-bottom:16px;line-height:1.5}
+.sh-resident .options{gap:9px}
+.sh-resident .option{border:1px solid #b6cde5;background:#f9fcff;color:#183451;border-radius:13px;min-height:66px;font-size:max(18px,1em);padding:10px 12px;gap:13px}
+.sh-resident .option>svg:first-child{background:#e4efff;color:#2463b5;padding:9px;width:46px;height:46px;border-radius:11px}
+.sh-resident .option[data-tone=hazard]{background:#fff5ef;border-color:#e4b5a5;color:#823922}
+.sh-resident .option[data-tone=hazard]>svg:first-child{background:#ffe3d6;color:#b13e20}
+.sh-resident .option[data-tone=unknown]{background:#fffaf0;border-color:#dcca9f;color:#72561a}
+.sh-resident .option[data-tone=unknown]>svg:first-child{background:#fff0c9;color:#876015}
+.sh-resident .option:hover{border-color:#246ed4;background:#edf5ff;box-shadow:0 0 0 1px #246ed4}
+.sh-resident .option .chevron{width:18px;height:18px;color:#597795}
+.sh-resident .result-card{background:#e4f0ff;color:#163e70;border-top:4px solid #2674d3;padding:20px;border-radius:16px}
+.sh-resident .result-card.wait{background:#fff2d8;color:#75460b;border-color:#b97b17}
+.sh-resident .result-card.danger{background:#ffebe4;color:#8b2e1d;border-color:#cb4c30}
+.sh-resident .result-card h3{font-size:29px;line-height:1.35;margin:9px 0;padding-right:50px}
+.sh-resident .result-card p{font-size:max(15px,.95em);line-height:1.6}
+.sh-resident .result-icon{top:35px;right:18px;opacity:1}
+.sh-resident .immediate-actions{background:#f4f8ff;border:1px solid #c2d8f1;padding:16px;border-radius:14px}
+.sh-resident .immediate-actions .action-list strong{font-size:max(18px,1em);line-height:1.5}
+.sh-resident .immediate-actions .action-list small{font-size:max(14px,.875em);line-height:1.6}
+.sh-resident .immediate-actions .action-list li:before{background:#2469bd}
+.sh-resident .resident-facilities{background:#eef8f3;border-color:#bdd8cb}
+.sh-resident .utility-row .button{background:#eaf1fc;color:#205388}
+@media(max-width:800px){
+ .sh-resident .screen-content{padding:18px}
+ .sh-resident .screen-heading,.sh-resident .question-heading{font-size:26px}
+ .sh-resident .location-visual{height:100px;margin:14px 0 18px}
+ .sh-resident .question-visual{height:64px;margin:10px 0}
+ .sh-resident .question-visual svg{width:42px;height:42px}
+ .sh-resident .option{min-height:62px}
+ .sh-resident .option>svg:first-child{width:42px;height:42px;padding:8px}
+}
+/* 디자인 채팅 통합: 그림은 유지하되 휴대폰에서 입력·선택을 밀어내지 않습니다. */
+.sh-resident .question-number{font-weight:750;letter-spacing:0}
+.sh-resident .compact-result .result-card{padding:14px 16px}
+.sh-resident .compact-result .result-card h3{font-size:28px;margin:6px 0}
+.sh-resident .compact-result .result-card p{font-size:15px;line-height:1.45}
+.sh-resident .compact-result .result-icon{top:24px}
+.sh-resident .compact-result .immediate-actions{padding:13px;border:2px solid #82aadd;background:#edf5ff}
+.sh-resident .compact-result .immediate-actions .action-list strong{font-size:18px;line-height:1.4}
+.sh-resident .compact-result .immediate-actions .action-list small{font-size:14px;line-height:1.45}
+.sh-resident .resident-facilities{background:#f1f6fb;border-color:#b8ccdf}
+.sh-resident .resident-facility svg{color:#2466b9}
+@media(max-width:800px){
+ .sh-resident .location-visual{height:76px;margin:10px 0 14px;padding:12px 16px}
+ .sh-resident .buildings{transform:scale(.75) translateY(8px);transform-origin:right center}
+ .sh-resident .visual-copy strong{font-size:15px}
+ .sh-resident .screen-sub{margin-bottom:12px}
+ .sh-resident .question-visual{float:right;width:56px;height:56px;margin:0 0 6px 12px}
+ .sh-resident .question-visual svg{width:35px;height:35px}
+ .sh-resident .question-heading{margin-top:10px;font-size:26px}
+ .sh-resident .question-hint{clear:both}
+ .sh-resident .question-number{font-size:13px}
+ .sh-resident .option:focus-visible{outline:3px solid #102c42;outline-offset:3px}
+}

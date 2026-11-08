@@ -1,0 +1,9 @@
+(function(){'use strict';
+const S=window.SAFEHOME,D=window.SAFEHOME_COMPLEX_REFERENCES||{fields:[],complexes:[]},esc=S.escapeHtml;
+function resolve(x){if(!x)return null;if(x.complexCode)return D.complexes.find(c=>c.code===x.complexCode)||null;const found=D.complexes.filter(c=>c.name===x.apt);return found.length===1?found[0]:null;}
+function html(x){const c=resolve(x);if(!c)return '<p class="complex-note">단지 공공정보 미연결 · 세대별 시설은 별도 확인이 필요합니다.</p>';return '<details class="complex-info"><summary>우리 아파트 정보 · '+esc(c.name)+'</summary><p>'+esc(c.address)+'</p><p class="complex-note">K-apt 단지 공통자료 · 세대별 설치·현재 사용 가능 여부는 미확인</p><dl>'+D.fields.map((n,i)=>'<div><dt>'+esc(n)+'</dt><dd>'+esc(c.fire?.fields?.[i]||'미확인')+'</dd></div>').join('')+'</dl><p>등록 진출입 지점 '+c.entrances.length+'곳</p>'+c.entrances.map(e=>'<p class="complex-note">'+esc(e.entrance_name||'진출입점')+' · '+esc(e.coordinates.join(', '))+'</p>').join('')+'<small>자료 확인 '+esc(D.checkedOn)+' · 원자료 기준일 미확인. 현장 확인과 행동 안내 판정에는 자동 적용하지 않습니다.</small></details>';}
+const normalize=v=>String(v||'').normalize('NFKC').toLowerCase().replace(/[\s·.,()_-]/g,'');
+function near(a,b){if(Math.abs(a.length-b.length)>1)return false;let i=0,j=0,n=0;while(i<a.length&&j<b.length){if(a[i]===b[j]){i++;j++;continue;}if(++n>1)return false;if(a.length>=b.length)i++;if(b.length>=a.length)j++;}return n+(a.length-i)+(b.length-j)<=1;}
+function search(q){const n=normalize(q);if(!n)return [];return D.complexes.map(c=>{const name=normalize(c.name),address=normalize(c.address);let score=name===n?0:name.startsWith(n)?1:name.includes(n)?2:address.includes(n)?3:99;if(score===99&&n.length>=3){for(let i=0;i<name.length;i++)for(const size of [n.length-1,n.length,n.length+1])if(near(n,name.slice(i,i+size)))score=4;}return {c,score};}).filter(x=>x.score<99).sort((a,b)=>a.score-b.score||a.c.name.localeCompare(b.c.name,'ko')).slice(0,8).map(x=>x.c);}
+S.ComplexInfo={resolve,html,search};
+})();

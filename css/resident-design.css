@@ -1,0 +1,141 @@
+/* 디자인 토큰: 전체 색상 / 글꼴 / 모서리 / 폭을 여기서 수정합니다. */
+:root{--accent:#ed4938;--navy:#102c42;--radius:24px;--body-size:16px;--paper:#f4f5f3;--ink:#172d3e;--muted:#687780;--line:#e3e8e9;--font:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:var(--body-size);letter-spacing:-.035em}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button,a{touch-action:manipulation}button{cursor:pointer}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #2878bb;outline-offset:4px}svg{width:24px;height:24px;flex-shrink:0;vertical-align:middle}.site-header{max-width:1440px;margin:auto;padding:30px 54px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:12px;font-size:25px;font-weight:850;letter-spacing:-1px}.brand-symbol{width:44px;height:48px;display:grid;place-items:center;background:var(--navy);color:white;border-radius:13px 13px 19px 19px}.brand-symbol svg{width:29px;height:29px}.brand-red{color:var(--accent)}.brand small{display:block;font-size:10px;letter-spacing:.01em;font-weight:500;margin-top:3px;color:var(--muted)}.header-right{display:flex;gap:20px;align-items:center}.demo-chip{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4c8b75}.icon-button{width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:white;color:var(--navy)}.icon-button svg{width:19px}.workspace{max-width:1320px;margin:28px auto 0;display:grid;grid-template-columns:1fr 450px 210px;gap:60px;align-items:start;padding:0 36px}.intro{padding-top:60px}.eyebrow{font-size:10px;font-weight:750;letter-spacing:.17em;display:flex;align-items:center;gap:9px;color:var(--muted)}.eyebrow>span{height:6px;width:6px;background:var(--accent);border-radius:50%}h1{font-size:clamp(32px,3.1vw,45px);font-weight:750;line-height:1.45;letter-spacing:-.065em;margin:24px 0 20px}h1 em{font-style:normal;color:var(--accent)}.intro>p{font-size:14px;color:var(--muted);line-height:1.9}.journey{margin-top:44px;display:grid;gap:0}.journey>div{display:flex;gap:16px;position:relative;padding:0 0 30px;opacity:.45}.journey>div:not(:last-child):after{content:"";position:absolute;top:34px;left:16px;width:1px;height:28px;background:#c1cbce}.journey b{width:34px;height:34px;display:grid;place-items:center;font-size:11px;border:1px solid #bbc8cf;border-radius:50%;font-variant-numeric:tabular-nums}.journey span{font-size:14px;font-weight:700;padding-top:1px}.journey small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:5px}.journey .active{opacity:1}.journey .active b{background:var(--navy);border-color:var(--navy);color:white}.intro-note{display:flex;gap:12px;align-items:center;border-top:1px solid #dce2e1;margin-top:12px;padding-top:23px}.intro-note>span{color:var(--accent)}.intro-note p{font-size:11px;color:var(--muted);line-height:1.9;margin:0}.intro-note strong{color:var(--navy);font-weight:650}.intro-bottom{margin-top:60px;font-size:10px;font-weight:800;letter-spacing:.08em}.intro-bottom span{display:block;font-size:8px;font-weight:400;margin-top:6px;color:#89979b;letter-spacing:.15em}.app-shell{background:#fff;border:1px solid white;box-shadow:0 20px 65px #20394610,0 2px 8px #20394605;border-radius:calc(var(--radius) + 8px);overflow:hidden;min-height:740px}.app-top{display:flex;justify-content:space-between;align-items:center;padding:25px 28px 20px;border-bottom:1px solid #f0f2f2}.mini-brand{display:flex;align-items:center;font-weight:850;font-size:14px;letter-spacing:-.04em}.mini-brand>span:first-child{margin-right:7px;color:var(--navy)}.mini-brand svg{width:21px;height:24px}.mini-brand>span:last-child{color:var(--accent)}.secure-label{font-size:10px;color:var(--muted);display:flex;gap:6px;align-items:center}.screen-content{padding:26px 28px 20px;animation:appear .22s ease-out}.section-kicker{font-size:11px;font-weight:700;color:var(--accent);display:flex;align-items:center;gap:7px}.section-kicker:before{content:"";width:16px;height:2px;background:currentColor}.screen-heading{font-size:29px;line-height:1.4;letter-spacing:-.055em;margin:13px 0 10px;font-weight:750}.screen-sub{font-size:.8em;line-height:1.75;color:var(--muted);margin:0 0 25px}.location-visual{height:118px;background:#edf2f3;position:relative;margin:23px 0;border-radius:calc(var(--radius) - 7px);overflow:hidden;display:flex;align-items:center;justify-content:space-between;padding:21px 24px}.location-visual:before{content:"";position:absolute;width:190px;height:190px;border:1px solid #dce5e8;border-radius:50%;right:-35px;top:-45px}.location-visual:after{content:"";position:absolute;width:130px;height:130px;border:1px solid #dce5e8;border-radius:50%;right:-5px;top:-15px}.visual-copy{font-size:11px;line-height:1.7;color:#697e89}.visual-copy strong{display:block;color:var(--navy);font-size:15px;margin-bottom:3px}.buildings{position:relative;z-index:1;display:flex;align-items:end;gap:5px;transform:translateY(6px)}.building{width:31px;height:61px;background:var(--navy);border-radius:4px 4px 0 0;display:grid;grid-template-columns:repeat(2,5px);gap:6px;align-content:start;justify-content:center;padding:11px 0}.building:nth-child(2){height:80px;width:38px;background:#3d5a6d}.building:nth-child(3){height:48px;background:#8aa0ab}.building i{width:5px;height:6px;background:#e7eff1;border-radius:1px}.map-pin{position:absolute;top:-26px;left:35px;color:var(--accent);filter:drop-shadow(0 3px 2px #102c4218)}.map-pin svg{width:28px;height:32px}.field{display:block;margin:0 0 16px}.field>span{font-size:.74em;display:block;font-weight:700;margin-bottom:8px}.field-wrap{position:relative}.field-wrap>svg{position:absolute;left:15px;top:16px;color:#7b8e98;width:19px;height:19px}input:not([type=range]):not([type=color]),select{width:100%;height:54px;border:1px solid #dbe3e6;border-radius:12px;background:#fff;color:var(--navy);padding:0 14px;font-size:.88em;min-width:0}.field-wrap input{padding-left:43px!important}input::placeholder{color:#8d9ba3}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:13px}.suggestions{display:grid;gap:4px;background:#f1f5f6;border-radius:10px;margin-top:6px}.suggestions:empty{display:none}.suggestions button{border:0;background:none;text-align:left;padding:12px;font-size:.8em;color:var(--navy)}.suggestions button:hover{background:#e2eaed}.button{border:0;min-height:54px;width:100%;border-radius:13px;display:flex;justify-content:center;align-items:center;gap:10px;font-size:.9em;font-weight:700;padding:13px 16px}.primary{background:var(--accent);color:#fff;box-shadow:0 6px 15px color-mix(in srgb,var(--accent) 17%,transparent)}.primary:hover{filter:brightness(.95)}.primary svg:last-child{margin-left:auto;width:19px}.primary .button-label{margin-right:auto}.secondary{background:#eff3f4;color:var(--navy)}.phone-button{margin-top:11px;background:var(--navy);color:white;min-height:54px}.phone-button svg{width:19px}.phone-button small{font-size:10px;font-weight:400;opacity:.7;margin-left:auto}.text-button{background:none;border:0;color:var(--muted);font-size:.73em;text-decoration:underline;text-underline-offset:4px;padding:14px 0;display:block;margin:auto}.micro-note{font-size:10px;line-height:1.7;color:#7c8b93;display:flex;gap:7px;margin:9px 0 0}.micro-note svg{width:14px;height:17px}.app-footer{padding:16px 20px;background:#f8f9f8;display:flex;justify-content:center;align-items:center;gap:6px;color:#819099;font-size:9px;border-top:1px solid #edf0ef}.app-footer svg{width:13px;height:13px}.context-rail{padding-top:80px}.rail-label{font-size:8px;letter-spacing:.16em;color:#8b999e;font-weight:700}.rail-number{font-size:64px;letter-spacing:-.07em;font-weight:800;color:var(--navy);margin-top:15px}.context-rail>p{font-size:17px;font-weight:600;line-height:1.6;margin:0 0 17px}.rail-call{font-size:11px;display:flex;align-items:center;gap:12px;color:var(--accent);font-weight:650}.rail-call svg{width:16px}.rail-line{height:1px;background:#dce2e1;width:45px;margin:40px 0}.context-rail>span{color:#728791}.context-rail h3{font-size:14px;line-height:1.7;margin:13px 0 9px}.context-rail .rail-detail{font-size:11px;color:var(--muted);line-height:1.9;font-weight:400}.site-footer{max-width:1320px;margin:35px auto;padding:0 36px;display:flex;justify-content:space-between;font-size:9px;color:#8c999e;letter-spacing:.04em}.question-tools{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.back{background:none;border:0;display:flex;align-items:center;gap:5px;font-size:.7em;color:var(--muted);padding:5px 0}.back svg{width:17px;transform:rotate(180deg)}.location-tag{font-size:10px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);background:#f2f5f5;padding:7px 10px;border-radius:7px}.steps{display:flex;gap:6px;margin:0 0 23px}.steps span{height:4px;flex:1;background:#edf0f0;border-radius:2px}.steps .done{background:var(--accent)}.question-number{font-size:11px;color:var(--accent);font-weight:750}.question-heading{font-size:28px;line-height:1.45;margin:13px 0 10px;letter-spacing:-.05em;white-space:pre-line}.question-hint{font-size:.73em;color:var(--muted);line-height:1.7;min-height:40px;margin:0 0 19px}.options{display:grid;gap:10px}.option{width:100%;min-height:65px;border:1px solid #dfe6e8;border-radius:13px;background:#fff;display:flex;align-items:center;gap:15px;padding:13px 16px;text-align:left;color:var(--navy);font-size:.95em;font-weight:650;transition:background .15s,border .15s,transform .15s}.option>svg{width:25px;height:25px}.option .chevron{margin-left:auto;width:15px;color:#9ca9af}.option:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 5%,white);transform:translateX(2px)}.question-phone{margin-top:26px}.question-note{text-align:center;font-size:10px;color:#8c989e;margin:14px 0 0}.result-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}.result-head h2{font-size:18px;margin:0}.result-head button{margin:0;padding:0;font-size:10px}.result-card{border-radius:calc(var(--radius) - 6px);padding:24px;color:white;background:var(--navy);position:relative;overflow:hidden}.result-card:after{content:"";position:absolute;width:160px;height:160px;border:1px solid #ffffff16;border-radius:50%;right:-50px;top:-45px}.result-card.wait{background:#b76118}.result-card.danger{background:#b83b2e}.result-card .result-label{font-size:10px;opacity:.8}.result-card h3{font-size:28px;letter-spacing:-.055em;line-height:1.4;margin:10px 0 10px;padding-right:42px}.result-card p{font-size:.72em;line-height:1.8;opacity:.9;margin:0}.result-icon{position:absolute;right:22px;top:37px;opacity:.8}.result-icon svg{width:45px;height:45px}.reason{display:flex;gap:7px;margin:12px 0 22px;font-size:10px;color:var(--muted);line-height:1.7}.reason svg{width:14px;height:17px}.action-title{font-size:13px;font-weight:750;margin:0 0 11px}.action-list{list-style:none;padding:0;margin:0 0 20px;counter-reset:action}.action-list li{counter-increment:action;display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #edf0f1;align-items:start}.action-list li:before{content:counter(action,decimal-leading-zero);font-size:11px;color:var(--accent);font-weight:800;padding-top:2px}.action-list strong{display:block;font-size:.8em;line-height:1.5}.action-list small{display:block;font-size:.66em;line-height:1.7;color:var(--muted);margin-top:4px}.utility-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0 18px}.utility-row .button{font-size:.72em;min-height:45px;padding:10px 8px}.utility-row svg{width:17px;height:17px}.facility-details{border:1px solid var(--line);border-radius:13px;margin-top:18px;padding:14px}.facility-details summary{font-size:12px;font-weight:700;cursor:pointer}.facility-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:15px}.facility-item{padding:12px 5px;text-align:center;border-radius:9px;background:#f1f5f4;font-size:9px;line-height:1.5}.facility-item svg{width:21px;height:21px;color:#467665;margin-bottom:7px}.facility-item strong{display:block;font-weight:600}.facility-item small{display:block;color:var(--muted);margin-top:4px}.facility-source{font-size:9px;color:var(--muted);line-height:1.7;margin:12px 0 0}.save-note{font-size:9px;color:var(--muted);text-align:center;margin:8px 0 0}.alert-inline{background:#fff1e8;border:1px solid #f5d2b8;padding:12px;border-radius:10px;font-size:11px;line-height:1.7;color:#844b21;margin:14px 0}.form-error{color:#bd3027;font-size:12px;margin:0 0 12px}.design-panel{position:fixed;right:18px;top:18px;bottom:18px;width:310px;background:white;box-shadow:0 20px 100px #102c4233;border:1px solid var(--line);border-radius:20px;z-index:20;padding:22px;overflow:auto}.design-panel[hidden]{display:none}.panel-title{display:flex;justify-content:space-between;align-items:center}.panel-title h2{font-size:18px;margin:0}.design-panel>p{font-size:11px;color:var(--muted);line-height:1.8}.design-panel label{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:12px;font-weight:650;margin:25px 0}.design-panel input[type=color]{width:44px;height:32px;border:0;background:none;padding:0;cursor:pointer}.design-panel input[type=range]{width:100%;accent-color:var(--accent)}.design-panel output{color:var(--muted);font-size:11px}.panel-preview{border-top:1px solid var(--line);padding-top:20px;margin:20px 0}.panel-preview button{display:block;border:1px solid var(--line);border-radius:9px;padding:12px;background:white;color:var(--navy);width:100%;text-align:left;font-size:12px;margin-top:9px}.panel-preview .eyebrow{margin-bottom:12px}#toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,15px);background:var(--navy);color:#fff;box-shadow:0 8px 30px #102c4220;border-radius:12px;padding:14px 20px;font-size:12px;line-height:1.7;opacity:0;pointer-events:none;z-index:30;width:max-content;max-width:90vw;transition:.2s}#toast.visible{opacity:1;transform:translate(-50%,0)}@keyframes appear{from{opacity:.5;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:1500px){.workspace{margin-top:55px}}@media(max-width:1190px){.workspace{grid-template-columns:1fr 440px;max-width:1000px;gap:50px}.context-rail{display:none}.intro h1{font-size:39px}.site-header{padding:25px 36px}}@media(max-width:800px){.workspace{display:block;max-width:500px;padding:0 16px;margin:8px auto 0}.intro{display:none}.site-header{padding:20px 22px}.brand{font-size:21px}.brand-symbol{width:35px;height:39px}.brand-symbol svg{width:24px}.brand small{display:none}.demo-chip{display:none}.app-shell{min-height:0}.site-footer{padding:0 22px;max-width:500px;font-size:8px;margin:22px auto}.site-footer>span:last-child{display:none}.screen-content{padding:25px 24px}.app-top{padding:22px 24px}.design-panel{right:10px;top:10px;bottom:10px;max-width:calc(100vw - 20px)}}@media(max-width:370px){.screen-content{padding:22px 18px}.app-top{padding:20px 18px}.screen-heading,.question-heading{font-size:26px}.brand{font-size:18px}.phone-button small{display:none}.location-tag{max-width:185px}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+/* 긴급 안내 본문은 보조 설명보다 크게 유지합니다. */
+.action-list strong{font-size:.9em}.action-list small{font-size:.75em}.result-card p{font-size:.8em}.question-hint{font-size:.8em}.button:disabled{opacity:.45;cursor:not-allowed}
+
+/* 사용자 검토 개선: 핵심 행동의 가독성과 터치 영역을 확보합니다. */
+.screen-sub,.question-hint,.result-card p,.action-list strong,
+.button,.option,input:not([type=range]):not([type=color]),select {
+  font-size:max(16px, 1em);
+}
+.field>span,.suggestions button,.text-button,.back,.utility-row .button,
+.facility-details summary,.action-list small,.reason,.micro-note,
+.question-note,.save-note,.facility-source,.app-footer,.alert-inline,.form-error {
+  font-size:max(14px, .875em);
+}
+.micro-note,.question-note,.save-note,.facility-source,.app-footer {
+  color:#536570;
+  line-height:1.6;
+}
+.phone-button small {font-size:12px;opacity:1;line-height:1.4;}
+.button {line-height:1.5;}
+.icon-button {min-width:44px;min-height:44px;}
+.back,.text-button,.suggestions button {min-height:44px;}
+.back {padding:10px 8px;}
+#skip-location {
+  width:100%;min-height:48px;margin:10px 0 0;padding:12px;
+  border:1px solid #c6d2d8;border-radius:12px;
+  background:#f5f8f9;color:var(--navy);font-weight:650;text-decoration:none;
+}
+.result-head {gap:10px;flex-wrap:wrap;}
+.result-head button {
+  min-height:44px;padding:10px 12px;font-size:max(14px, .875em);
+  color:var(--navy);background:#eff3f4;border-radius:10px;text-decoration:none;
+}
+.utility-row .button {min-height:48px;flex-wrap:wrap;}
+.facility-details summary {min-height:44px;padding:10px 0;line-height:1.5;}
+.facility-details label {display:block;font-size:14px;line-height:1.6;margin-top:12px;}
+.facility-item {font-size:13px;overflow-wrap:anywhere;}
+.facility-item small {font-size:12px;}
+.location-tag {font-size:13px;min-width:0;}
+.question-tools {gap:12px;}
+.question-tools .back {flex-shrink:0;}
+.result-card .result-label {font-size:12px;opacity:1;}
+.result-card p {opacity:1;}
+.result-card.wait {background:#935014;}
+.screen-sub,.question-hint {line-height:1.6;}
+input::placeholder {color:#637681;}
+
+/* 태블릿에서도 좁은 소개 열과 입력 화면이 경쟁하지 않도록 한 열로 배치합니다. */
+@media(max-width:1000px) {
+  .workspace {display:block;max-width:580px;padding:0 16px;margin:8px auto 0;}
+  .intro,.context-rail {display:none;}
+  .site-header {padding:16px 22px;}
+  .site-footer {max-width:580px;}
+  .app-shell {min-height:0;}
+}
+
+/* 모바일 전화 버튼은 매 단계 같은 위치에 둡니다. 하단 여백은 콘텐츠 가림을 막습니다. */
+@media(max-width:800px) {
+  body {padding-bottom:calc(92px + env(safe-area-inset-bottom, 0px));}
+  .site-header {padding:12px 20px;}
+  .workspace {margin-top:0;}
+  .app-top {padding:10px 20px;}
+  .mini-brand {display:none;}
+  .secure-label {font-size:12px;}
+  .screen-content {padding:18px 20px;animation:none;}
+  .screen-heading {font-size:26px;line-height:1.35;margin:10px 0 8px;}
+  .screen-sub {margin-bottom:16px;}
+  .location-visual {display:none;}
+  .field {margin-bottom:12px;}
+  .field>span {margin-bottom:6px;}
+  .question-tools {margin-bottom:14px;}
+  .steps {margin-bottom:16px;}
+  .question-hint {min-height:0;}
+  #screen .phone-button {
+    position:fixed;z-index:10;bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+    left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:516px;
+    min-height:56px;margin:0;padding:14px 18px;
+    box-shadow:0 0 0 8px var(--paper),0 5px 24px #102c4233;
+  }
+  #screen .phone-button small {display:none;}
+  #toast {bottom:calc(88px + env(safe-area-inset-bottom, 0px));font-size:14px;}
+  .app-footer {padding:14px 20px;align-items:flex-start;}
+  .app-footer svg {margin-top:4px;flex-shrink:0;}
+  .utility-row {grid-template-columns:1fr;}
+}
+
+/* 위치 확인 체크박스에는 텍스트 입력창의 전체 폭/높이를 적용하지 않습니다. */
+input[type=checkbox] {
+  width:22px!important;height:22px!important;min-width:22px;
+  padding:0!important;margin:0;vertical-align:middle;accent-color:var(--navy);
+}
+.field>span:has(input[type=checkbox]) {
+  display:flex;align-items:center;gap:10px;min-height:44px;line-height:1.5;
+}
+@media(max-width:800px) {
+  #screen button,#screen input,#screen select,#screen summary {
+    scroll-margin-top:16px;scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+  .screen-heading {font-size:24px;}
+  .field>span:has(input[type=checkbox]) {margin-bottom:0;}
+}
+@media(max-width:800px) {
+  /* 바깥 브랜드 헤더와 중복되는 앱 내부 헤더를 생략합니다. */
+  .app-top {display:none;}
+}
+
+/* 긴급 사용 화면: 입력 → 질문 → 행동. 색상과 아이콘·문구를 함께 사용. */
+:root{--accent:#b9231c;--navy:#102c42;--muted:#4f626e;--radius:16px}
+.location-visual{display:none}.screen-heading{font-size:28px;line-height:1.3;margin:12px 0}.section-kicker{color:#435767}.screen-sub{margin-bottom:20px}.field>span{font-size:16px}.field-row input{font-size:22px!important;font-weight:750;height:60px!important}.field-wrap input{height:58px!important;border:2px solid #8295a3!important}.primary{background:#102c42;box-shadow:none;min-height:60px;font-size:18px}.phone-button{background:#b9231c;font-size:18px;font-weight:800}.screen-content .micro-note{display:none}.suggestions{border:1px solid #c4d0d9;max-height:260px;overflow:auto}.suggestions:empty{border:0}.suggestions button{min-height:62px;background:#fff;border-bottom:1px solid #dbe3e9;font-weight:700;font-size:16px}.suggestions button small{font-size:13px!important;margin-top:5px}.suggestions button:hover{background:#eaf2fa}.options{gap:9px}.option{border:2px solid #bac7d0;min-height:64px;font-size:18px}.option>svg{width:30px;height:30px}.option[data-tone=hazard]{border-color:#d89b92;background:#fff3ef;color:#8f211a}.option[data-tone=unknown]{background:#eef2f5;border-color:#a6b5c1;color:#344d60}.option .chevron{color:currentColor}.question-number{font-size:13px;color:#435767}.question-heading{font-size:29px;font-weight:800}.question-note{color:#435767}.result-card .result-label{font-size:14px}.result-card h3{font-size:32px;font-weight:850}.result-card.danger{background:#ac2119}.result-card.wait{background:#854406}.result-icon{opacity:1}.result-icon svg{width:48px;height:48px}.action-list strong{font-size:18px}.action-list li:before{font-size:18px;color:#102c42}.complex-info{margin:18px 0 0}.screen-content{animation:none}.app-shell{min-height:0}.resident-last-saved{font-size:12px}
+@media(max-width:800px){.screen-content{padding:18px}.screen-heading{font-size:27px}.site-header{padding:10px 18px}.question-heading{font-size:27px}.question-tools{margin-bottom:10px}.steps{margin-bottom:14px}.question-hint{margin-bottom:16px}.option{min-height:62px}.question-phone{margin-top:16px}}
+/* 공통 작업공간 스타일보다 긴급 행동의 의미색을 우선합니다. */
+body #screen .phone-button{background:#b9231c!important;color:#fff!important;border-color:#b9231c!important}
+body #screen .primary{background:#102c42!important;color:#fff!important}
+
+.previous-report{margin:0 20px 14px;font-size:13px;color:#52616c}.previous-report summary{cursor:pointer;padding:10px 0}.previous-report .save-note{text-align:left}
+
+/* 최종 안내: 행동을 먼저, 시설은 펼쳐서 표시합니다. */
+.immediate-actions{background:#edf5ff;border:2px solid #316aa3;border-radius:16px;padding:20px;margin:16px 0 20px;color:#102c42}
+.immediate-actions .action-title{font-size:22px;font-weight:850;margin:0 0 12px;line-height:1.4}
+.immediate-actions .action-list{margin:0;counter-reset:action}
+.immediate-actions .action-list li{border-bottom:1px solid #b9cee3;padding:15px 0;gap:12px}
+.immediate-actions .action-list li:last-child{border:0;padding-bottom:0}
+.immediate-actions .action-list li:before{content:counter(action);display:grid;place-items:center;background:#163e69;color:white;border-radius:50%;width:30px;height:30px;min-width:30px;padding:0;font-size:18px;font-weight:800}
+.immediate-actions .action-list strong{font-size:20px;line-height:1.5;font-weight:800;color:#102c42}
+.immediate-actions .action-list small{font-size:15px;line-height:1.6;color:#354f65;margin-top:6px}
+.evacuation-facilities{background:#f4f7fa;border:2px solid #9aafbf;padding:16px}
+.evacuation-facilities summary{font-size:20px;list-style:none;font-weight:800}
+.evacuation-facilities summary::-webkit-details-marker{display:none}
+.evacuation-facilities .facility-item{background:white;border:1px solid #c4d2dc;padding:15px 5px;font-size:15px}
+.evacuation-facilities .facility-item svg{width:32px;height:32px;color:#244968}
+.evacuation-facilities .facility-item small{font-size:15px;font-weight:700;color:#344d60}
+body #screen .complex-info summary{font-size:18px;line-height:1.5}
+body #screen .complex-info dt,body #screen .complex-info dd{font-size:15px;line-height:1.5}
+@media(max-width:420px){.immediate-actions{padding:16px}.immediate-actions .action-list strong{font-size:19px}.evacuation-facilities{padding:12px}.facility-grid{gap:5px}}
+/* 휴대폰 최종 안내: 중복 없이 행동과 해당 시설을 연속 배치합니다. */
+.compact-result .result-head{margin-bottom:8px}.compact-result .result-card{padding:14px 16px}.compact-result .result-card h3{font-size:27px;margin:6px 0}.compact-result .result-card p{font-size:14px;line-height:1.5}.compact-result .result-icon{top:22px;right:15px}.compact-result .reason{margin:8px 0;font-size:12px;line-height:1.4}.compact-result .immediate-actions{margin:10px 0;padding:13px}.compact-result .action-title{font-size:19px;margin-bottom:4px}.compact-result .action-list li{padding:9px 0;gap:9px}.compact-result .action-list strong{font-size:17px;line-height:1.4}.compact-result .action-list small{font-size:13px;line-height:1.4;margin-top:3px}.compact-result .action-list li:before{width:25px;height:25px;min-width:25px;font-size:15px}.resident-facilities{margin:12px 0;border:1px solid #b7c8d4;border-radius:12px;padding:12px;background:#f4f7fa}.resident-facilities h3{font-size:17px;margin:0 0 9px}.resident-facility-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.resident-facility{display:flex;gap:7px;align-items:start;background:#fff;border:1px solid #d5dfe7;border-radius:8px;padding:9px}.resident-facility svg{width:23px;height:23px;color:#244968}.resident-facility strong{display:block;font-size:14px;line-height:1.4}.resident-facility small{display:block;font-size:12px;line-height:1.4;color:#40586b;margin-top:3px}.resident-facilities>p{font-size:12px;line-height:1.4;margin:8px 0 0;color:#4c5d69}.compact-result .utility-row{grid-template-columns:1fr 1fr;margin:8px 0;gap:7px}.compact-result .utility-row .button{font-size:14px;padding:8px;min-height:44px}.compact-result .facility-details{margin-top:8px;padding:8px 12px}.compact-result .facility-details summary{font-size:14px;padding:5px 0}.compact-result .save-note{font-size:12px;line-height:1.4}
+
+#location-form .primary{min-height:64px;margin-top:4px}#location-form .button-label{font-size:18px;line-height:1.5;overflow-wrap:anywhere}

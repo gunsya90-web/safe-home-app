@@ -1,0 +1,204 @@
+/* SAFE-HOME / Quiet Operations — presentation layer, existing behavior retained. */
+:root{--sh-bg:#f6f7f9;--sh-surface:#fff;--sh-ink:#202a38;--sh-muted:#626f80;--sh-line:#e3e7ed;--sh-accent:#3659c9;--sh-soft:#eef2ff;--sh-radius:12px}
+body.sh-refresh{background:var(--sh-bg);color:var(--sh-ink);font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;letter-spacing:-.02em;--navy:#26354b;--ink:#202a38;--bg:#f6f7f9;--paper:#f6f7f9;--muted:#626f80;--line:#e3e7ed;--red:#c43f38;--accent:#3659c9}
+.sh-refresh button,.sh-refresh input,.sh-refresh select,.sh-refresh textarea{font-family:inherit}
+.sh-refresh button:focus-visible,.sh-refresh a:focus-visible,.sh-refresh input:focus-visible,.sh-refresh select:focus-visible,.sh-refresh summary:focus-visible{outline:3px solid #486be0;outline-offset:3px}
+.sh-refresh input::placeholder,.sh-refresh textarea::placeholder{color:#758193}
+.sh-refresh button:disabled{cursor:not-allowed;opacity:.55}
+.sh-workspace{padding-left:208px!important}
+.sh-sidebar{position:fixed;inset:0 auto 0 0;width:208px;background:#f0f2f5;border-right:1px solid var(--sh-line);display:flex;flex-direction:column;padding:28px 14px 18px;z-index:35;overflow:auto;gap:24px;color:var(--sh-ink);font-size:14px}
+.sh-sidebar .sh-logo{display:flex;align-items:center;gap:10px;padding:0 10px;color:var(--sh-ink);font-size:17px;font-weight:800;letter-spacing:-.7px;text-decoration:none}
+.sh-monogram{display:grid;place-items:center;width:30px;height:32px;border-radius:8px;background:#283957;color:#fff;font-size:15px;letter-spacing:0}
+.sh-sidebar .sh-caption{display:block;margin:6px 0 0 50px;color:var(--sh-muted);font-size:11px;letter-spacing:.03em}
+.sh-sidebar nav{display:grid;gap:5px;margin:0;padding:0}
+.sh-sidebar .sh-group-label{font-size:11px;letter-spacing:.04em;color:var(--sh-muted);margin:14px 12px 7px;font-weight:600}
+.sh-sidebar a.sh-link{display:flex;align-items:center;gap:11px;padding:11px 12px;min-height:44px;border-radius:8px;color:#536074;text-decoration:none;font-size:13px;font-weight:550;margin:0}
+.sh-sidebar a.sh-link:hover{background:#e5e9ef;color:#202a38}
+.sh-sidebar a.sh-link[aria-current=page]{background:#fff;color:#294ba8;box-shadow:0 1px 4px #26354b09;font-weight:700}
+.sh-nav-mark{width:18px;text-align:center;font-size:16px;color:inherit;flex-shrink:0}
+.sh-sidebar .sh-side-note{margin-top:auto;border-top:1px solid #dce2ea;padding:16px 10px 0;font-size:11px;line-height:1.8;color:#626f80}
+.sh-menu-toggle{display:none}
+/* Shared chrome and quiet panel hierarchy */
+.sh-workspace .desk-header,.sh-workspace .top{height:auto;min-height:76px;background:#fff;border-bottom:1px solid var(--sh-line);padding:18px 28px;gap:18px;flex-wrap:wrap}
+.sh-workspace .desk-header .brand,.sh-workspace .top .brand{font-size:17px;letter-spacing:-.5px}
+.sh-workspace .brand>span,.sh-workspace .brand span>span{color:inherit}
+.sh-workspace .brand small{font-size:13px;color:var(--sh-muted);font-weight:500}
+.sh-workspace .shield{display:none}
+.sh-workspace .demo-tag,.sh-workspace .local{font-size:11px;color:#626f80}
+.sh-workspace .desk-actions{gap:12px;flex-wrap:wrap}
+.sh-workspace .desk-actions>a{display:none}
+.sh-workspace .mode{font-size:13px;color:var(--sh-muted)}
+.sh-workspace .mode>span{display:none}
+.sh-workspace :is(.queue-panel,.event-panel,.board-panel,.history-panel,.unit-panel,.message-panel,.tasks-panel,.map-panel,.activity-panel,.detail-panel,.reports-panel){border:1px solid var(--sh-line);border-radius:var(--sh-radius);box-shadow:0 1px 2px #202a3803;background:#fff}
+.sh-workspace :is(.section-head,.panel-head){padding:18px 20px;gap:12px;flex-wrap:wrap}
+.sh-workspace :is(.section-head h2,.panel-head h2){font-size:15px;font-weight:700;letter-spacing:-.03em}
+.sh-workspace :is(button,input,select,textarea){border-radius:8px}
+.sh-workspace :is(.primary,.solid){background:#3659c9;color:#fff;border-color:#3659c9;box-shadow:none}
+.sh-workspace :is(.overline,.eyebrow){font-size:10px;letter-spacing:.11em;color:#69778b}
+.sh-workspace :is(.legend,.board-note,.map-caption,.map-footer,.form-note,.queue-foot){font-size:12px;line-height:1.7;color:#626f80}
+.sh-workspace :is(.event-title h1,.incident-title h1){font-size:24px;letter-spacing:-.04em;font-weight:700}
+.sh-workspace :is(.event-title p,.incident-meta){font-size:12px;line-height:1.7}
+/* Situation desk: stable list, workspace, supporting details. */
+.sh-workspace .desk-layout{grid-template-columns:200px minmax(0,1fr) 280px;padding:0 24px 28px;gap:18px;margin-top:20px}
+.sh-workspace .desk-alerts{margin:20px 24px 0;padding:13px 16px;gap:14px;border-radius:10px;background:#fff;font-size:12px;border-color:var(--sh-line)}
+.sh-workspace .desk-alerts strong{font-weight:650}
+.sh-workspace .queue-tabs button{background:#f0f2f6;font-size:12px;min-height:40px}
+.sh-workspace .queue-tabs button.active,.sh-workspace .history-tabs button.active{background:#e9eefc;color:#294ba8;font-weight:700}
+.sh-workspace .queue-item{padding:17px 16px}
+.sh-workspace .queue-item.selected{background:#f0f3ff;border-left:3px solid #4c67c9;padding-left:13px}
+.sh-workspace .queue-item small{font-size:12px}
+.sh-workspace .event-title{padding:22px}
+.sh-workspace .event-counts{padding:16px 8px}
+.sh-workspace .event-counts small{font-size:11px}
+.sh-workspace .event-counts b{font-size:23px;font-weight:650}
+.sh-workspace .desk-board{background:#f9fafc;min-height:320px;padding:18px}
+.sh-workspace .desk-unit{min-width:66px;min-height:58px;border-radius:7px;padding:9px}
+.sh-workspace .desk-unit b{font-size:14px}
+.sh-workspace .desk-unit small{font-size:11px}
+.sh-workspace .desk-unit.selected{outline:2px solid #486be0;outline-offset:2px}
+.sh-workspace .floor{font-size:12px;background:#edf0f5;color:#596b80}
+.sh-workspace .board-tools{flex-wrap:wrap;gap:10px}
+.sh-workspace .board-tools label,.sh-workspace .board-tools select{font-size:12px}
+.sh-workspace :is(.history-row,.info-grid,.unit-extra){font-size:12px;line-height:1.8}
+.sh-workspace .section-head button{min-height:36px;font-size:12px;padding:7px 10px}
+.sh-workspace .unit-actions #open-status{background:#3659c9;border-color:#3659c9}
+/* Field: the board remains operational; status semantics are retained. */
+.sh-workspace .incident-bar{background:#fff;padding:22px 28px;gap:18px;border-bottom:1px solid var(--sh-line);flex-wrap:wrap}
+.sh-workspace .incident-bar .live-dot{background:#6b7e99;box-shadow:none}
+.sh-workspace .context-select{font-size:12px}
+.sh-workspace .tablet-nav{padding:14px 28px;background:#f6f7f9;flex-wrap:wrap}
+.sh-workspace .view-tabs button{font-size:13px;min-height:42px}
+.sh-workspace .view-tabs button.active{background:#e8eefc;color:#294ba8;border-color:#d4def7}
+.sh-workspace .command-layout{padding:12px 24px 28px;grid-template-columns:minmax(0,1fr) 310px;gap:20px}
+.sh-workspace .metrics{gap:10px}
+.sh-workspace .metric{padding:16px;border-radius:10px;box-shadow:none}
+.sh-workspace .metric small{font-size:12px;margin-bottom:10px}
+.sh-workspace .metric strong{font-size:28px;font-weight:650}
+.sh-workspace .board-viewport{background:#f8f9fc;background-image:none;padding:24px}
+.sh-workspace .detail-head{background:#f3f5fa;color:#26354b;padding:22px;border-bottom:1px solid var(--sh-line)}
+.sh-workspace .detail-head :is(.eyebrow,p){color:#626f80;font-size:12px}
+.sh-workspace .detail-head .status-badge{border-color:#cbd5e4;color:#26354b;background:#fff;font-size:12px}
+.sh-workspace .detail-body{padding:20px}
+.sh-workspace :is(.report-card,.log-entry,.section-title,.detail-body label,.facility-note){font-size:12px;line-height:1.7}
+.sh-workspace :is(.map-tools input,.floor-controls select,.floor-controls label){font-size:12px}
+.sh-workspace .map-tools button{min-width:36px;min-height:36px}
+.sh-workspace .no-plan{background:#f8f9fb;font-size:12px;border-style:dashed}
+/* Data management and existing admin retain every original control. */
+.sh-data>main{max-width:1060px;margin:32px auto;padding:32px;background:#fff;border:1px solid var(--sh-line);border-radius:12px;box-shadow:0 2px 4px #26354b03}
+.sh-data h1{font-size:28px;letter-spacing:-.045em;margin:18px 0 10px;color:#202a38}
+.sh-data h2{font-size:18px;margin:24px 0 12px}
+.sh-data label{font-size:14px;line-height:1.6}
+.sh-data input,.sh-data select{min-height:46px;background:#fff;color:#26354b}
+.sh-data button{background:#3659c9;border-color:#3659c9;color:#fff;min-height:44px}
+.sh-data fieldset{border:1px solid var(--sh-line);border-radius:10px;padding:20px;margin:20px 0}
+.sh-data table{font-size:13px;line-height:1.7}
+.sh-data th{background:#f7f8fb;color:#536074;font-weight:600}
+.sh-data .notice{background:#f1f4fa;border-radius:9px;color:#536074}
+.sh-admin #app{max-width:1200px;width:100%;min-height:100vh;box-shadow:none;border:0;margin:auto;background:#f6f7f9}
+.sh-admin .topbar{background:#fff;color:#26354b;border-bottom:1px solid var(--sh-line)}
+.sh-admin .view-root{padding:24px}
+.sh-admin .demo-banner{background:#eef2f7;color:#536074;border-color:#dfe6ef}
+/* Resident: focused, single-column, generous type, no promotional side rails. */
+.sh-resident{--accent:inherit;--navy:inherit;--radius:inherit;--body-size:inherit}
+.sh-resident .site-header{max-width:620px;padding:22px 24px}
+.sh-resident .brand{font-size:21px;letter-spacing:-.7px}
+.sh-resident .brand-red{color:#3659c9}
+.sh-resident .brand-symbol{background:#283957;border-radius:10px;width:38px;height:40px}
+.sh-resident .workspace{display:block;max-width:540px;margin:0 auto;padding:0 16px}
+.sh-resident .intro,.sh-resident .context-rail{display:none}
+.sh-resident .app-shell{border:1px solid #e3e7ed;border-radius:20px;box-shadow:0 8px 32px #26354b06;min-height:0}
+.sh-resident .app-top{display:none}
+.sh-resident .screen-content{padding:26px}
+.sh-resident .screen-heading{font-size:28px;line-height:1.35;letter-spacing:-.045em}
+.sh-resident .location-visual{display:none}
+.sh-resident .section-kicker{color:#526591;font-size:12px;letter-spacing:.02em}
+.sh-resident .section-kicker:before{display:none}
+.sh-resident .button{border-radius:10px;box-shadow:none;font-size:max(16px,1em)}
+.sh-resident .primary{background:var(--accent)}
+.sh-resident .phone-button{background:var(--navy)}
+.sh-resident .result-card{border-radius:14px}
+.sh-resident .result-card:after{display:none}
+.sh-resident .option{min-height:64px;border-radius:10px;font-weight:600}
+.sh-resident .option:hover{transform:none;background:#f4f6ff;border-color:#7890d4}
+.sh-resident .steps .done{background:var(--accent)}
+.sh-resident .site-footer{max-width:540px;padding:0 24px;font-size:11px}
+.sh-resident .app-footer{background:#f7f8fb;color:#596a7b}
+.sh-resident .screen-sub,.sh-resident .question-hint{color:#596a7b}
+.sh-resident .micro-note{margin-top:14px}
+.sh-resident #resident-last-saved{padding:12px 24px;text-align:left;line-height:1.8}
+.sh-resident #resident-last-saved:empty{display:none}
+/* Reflow by available workspace, not only by screen width. */
+@media(max-width:1400px){.sh-workspace .desk-layout{grid-template-columns:180px minmax(0,1fr)}.sh-workspace .desk-side{position:static;grid-column:1/-1;grid-template-columns:1fr 1fr}.sh-workspace .desk-side .unit-panel{max-height:none;grid-column:1/-1}.sh-workspace .command-layout{grid-template-columns:minmax(0,1fr) 280px}.sh-workspace .metric{padding:12px}.sh-workspace .metric small{font-size:11px}}
+@media(max-width:1100px){.sh-workspace{padding-left:176px!important}.sh-sidebar{width:176px;padding-inline:10px}.sh-sidebar .sh-logo{font-size:15px;gap:7px}.sh-sidebar a.sh-link{font-size:12px;padding-inline:10px}.sh-workspace .command-layout{grid-template-columns:1fr}.sh-workspace .detail-panel{position:static}.sh-data>main{margin:20px;padding:24px}.sh-workspace .desk-header .demo-tag{display:none}.sh-workspace .incident-meta{margin-left:0}}
+@media(max-width:800px){.sh-workspace{padding-left:0!important;padding-top:54px!important}.sh-sidebar{display:none;inset:54px 0 auto;width:100%;max-height:calc(100dvh - 54px);border-bottom:1px solid #dce2ea;box-shadow:0 12px 24px #26354b18}.sh-workspace.sh-menu-open .sh-sidebar{display:flex}.sh-menu-toggle{display:flex;align-items:center;justify-content:space-between;position:fixed;inset:0 0 auto;width:100%;height:54px;z-index:36;background:#f0f2f5!important;color:#26354b!important;border:0!important;border-bottom:1px solid #dce2ea!important;border-radius:0!important;padding:12px 20px!important;font-size:14px!important}.sh-workspace .desk-layout{grid-template-columns:170px minmax(0,1fr);padding:0 14px 20px;gap:12px}.sh-workspace .desk-header,.sh-workspace .top{padding:16px}.sh-workspace .desk-alerts{margin:14px}.sh-workspace .command-layout{padding:14px}.sh-workspace .incident-bar{padding:20px 16px}.sh-workspace .tablet-nav{padding:12px 16px}.sh-workspace .context-select select{min-width:0;max-width:100%;width:100%}.sh-workspace .context-select{min-width:0;max-width:100%}.sh-resident .site-header{padding:12px 20px}.sh-resident .screen-content{padding:20px}.sh-resident .screen-heading{font-size:24px}.sh-resident #screen .phone-button{max-width:508px}.sh-data>main{margin:14px;padding:20px}.sh-workspace button{touch-action:manipulation}}
+@media(max-width:600px){.sh-workspace .desk-layout{display:flex;flex-direction:column}.sh-workspace .desk-side{display:flex;flex-direction:column}.sh-workspace .desk-alerts{gap:10px}.sh-workspace .desk-alerts button{margin-left:0}.sh-workspace .event-counts{grid-template-columns:repeat(3,1fr);gap:14px}.sh-workspace .event-counts>div:nth-child(3){border:0}.sh-workspace .desk-actions{margin-left:0}.sh-workspace .metrics{grid-template-columns:repeat(2,1fr)}.sh-workspace .metric:last-child{grid-column:1/-1}.sh-workspace :is(.panel-head,.section-head){padding:16px}.sh-workspace .map-tools{flex-wrap:wrap}.sh-workspace .map-tools input{width:85px}.sh-workspace .incident-bar{align-items:flex-start}.sh-workspace .sample-tools{flex-wrap:wrap}.sh-workspace .incident-title{min-width:0}.sh-data input,.sh-data select{width:100%;min-width:0}.sh-data input[type=checkbox]{width:22px}.sh-admin .view-root{padding:14px}}
+@media(prefers-reduced-motion:reduce){.sh-refresh *{scroll-behavior:auto!important}}
+/* Legacy incident links keep their original routing, with the same visual language. */
+.sh-refresh #app:not(.dark){--paper:#f6f7f9;--ink:#202a38;--line:#e3e7ed;--red:#3659c9;--red-dark:#2946aa;--radius-card:12px;--radius-btn:10px;--shadow-card:none;background:#f6f7f9}
+.sh-refresh #app:not(.dark) .topbar{background:#fff;color:#26354b;border-bottom:1px solid #e3e7ed}
+.sh-refresh #app:not(.dark) :is(.reset-btn,.theme-toggle-btn){background:#eef2f7;color:#26354b;width:40px;height:40px}
+.sh-refresh #app:not(.dark) .panel{background:#fff!important;border-color:#e3e7ed!important;border-radius:12px;box-shadow:none;padding:22px}
+.sh-refresh #app:not(.dark) :is(.utility-btn,.start-btn){border-radius:9px;box-shadow:none;min-height:44px}
+.sh-refresh #app:not(.dark) .utility-btn:not(.secondary){background:#3659c9;color:#fff}
+.sh-refresh #app:not(.dark) .utility-btn.secondary{background:#fff;color:#34465c;border:1px solid #dce3ed}
+.sh-refresh #app:not(.dark) .incident-tab{box-shadow:none;border-radius:8px;font-size:13px}
+.sh-refresh #app:not(.dark) .incident-tab.active{background:#e9eefc;color:#294ba8;border-color:#d4def7}
+.sh-refresh #app:not(.dark) :is(.panel-title,.panel h3){font-size:16px;color:#26354b}
+.sh-refresh #app:not(.dark) .facility-field label{font-size:13px;color:#536074}
+.sh-refresh #app:not(.dark) .facility-field :is(input,select){min-height:44px;border-radius:8px;background:#fff!important;color:#26354b;font-size:14px}
+.sh-refresh #app:not(.dark) .afp-note{color:#536074;font-size:13px;line-height:1.8}
+.sh-admin #app.dark{background:#121317}
+.sh-admin #app.dark .topbar{background:#232b3c;color:#f0f4fa}
+.sh-admin #app.dark .demo-banner{background:#252d3a;color:#d5dfeb}
+@media(max-width:800px){.sh-admin .topbar{top:54px;z-index:30}}
+
+/* Visibility pass: navigation, working surface and selected record have distinct contrast. */
+.sh-workspace{--sh-bg:#edf1f6;--line:#d5dde7;background:var(--sh-bg)}
+.sh-workspace .sh-sidebar{background:#223249;border-color:#223249;color:#fff}
+.sh-workspace .sh-sidebar .sh-logo{color:#fff}
+.sh-workspace .sh-monogram{background:#e7edff;color:#223249}
+.sh-workspace .sh-sidebar :is(.sh-caption,.sh-group-label,.sh-side-note){color:#c2cee0}
+.sh-workspace .sh-sidebar .sh-side-note{border-color:#42516a}
+.sh-workspace .sh-sidebar a.sh-link{color:#d4deec;font-size:14px}
+.sh-workspace .sh-sidebar a.sh-link:hover{background:#344762;color:#fff}
+.sh-workspace .sh-sidebar a.sh-link[aria-current=page]{background:#edf2ff;color:#233f8e;box-shadow:inset 4px 0 #86a5ff;font-weight:750}
+.sh-workspace .incident-bar,.sh-workspace .event-panel{border-top:4px solid #3659c9;background:#fff}
+.sh-workspace :is(.incident-title h1,.event-title h1){font-size:26px;color:#15263c}
+.sh-workspace :is(.panel-head,.board-panel>.section-head){background:#f2f5fa;border-bottom:1px solid #d5dde7}
+.sh-workspace :is(.panel-head h2,.section-head h2){font-size:17px;color:#1d304a}
+.sh-workspace .board-viewport,.sh-workspace .desk-board{background:#e8edf4}
+.sh-workspace :is(.floor-label,.floor){background:#cdd7e5;color:#263d58;font-weight:800}
+.sh-workspace .metric{border-top:4px solid #718096;background:#fff}
+.sh-workspace .metric small{color:#35465b;font-size:13px;font-weight:650}
+.sh-workspace .metric strong{font-size:30px}
+.sh-workspace .metric.danger{border-top-color:#bd4138;background:#fff3f1}
+.sh-workspace .metric.rescuing{border-top-color:#aa7010;background:#fff7e7}
+.sh-workspace .metric.waiting{border-top-color:#2d6eaa;background:#edf5ff}
+.sh-workspace .metric.moving{border-top-color:#aa710d;background:#fff8e9}
+.sh-workspace .metric.safe{border-top-color:#2d7c5b;background:#edf8f1}
+.sh-workspace .metric.active{outline:3px solid #26354b;outline-offset:2px}
+.sh-workspace :is(.unit,.desk-unit){border-color:#bdc9d8;box-shadow:0 2px 3px #24364b0a}
+.sh-workspace :is(.unit.danger,.desk-unit.danger){background:#ffe0dc;border-color:#cd6c60;color:#922a23}
+.sh-workspace :is(.unit.rescuing,.desk-unit.rescuing){background:#ffebc4;border-color:#c69238;color:#80500a}
+.sh-workspace :is(.unit.waiting,.desk-unit.waiting){background:#dfedff;border-color:#7d9fc7;color:#245886}
+.sh-workspace :is(.unit.moving,.desk-unit.moving){background:#fff0d2;border-color:#c4a064;color:#7c580e}
+.sh-workspace :is(.unit.safe,.desk-unit.safe){background:#dff2e5;border-color:#75a68b;color:#256144}
+.sh-workspace :is(.unit.unresponded,.desk-unit.unresponded){background:#fff;color:#536378}
+.sh-workspace :is(.unit.active,.desk-unit.selected){outline:3px solid #243d88;outline-offset:3px;box-shadow:0 0 0 6px #fff}
+.sh-workspace .unit .unit-status{font-size:max(12px,calc(var(--cell) * .095));font-weight:700}
+.sh-workspace .unit small{font-size:max(11px,calc(var(--cell) * .08));opacity:1}
+.sh-workspace .desk-unit small{font-size:12px;font-weight:600}
+.sh-workspace .detail-panel,.sh-workspace .unit-panel{border:2px solid #91a5c1;box-shadow:0 5px 18px #2339510d}
+.sh-workspace .detail-head{background:#263b57;color:white;border:0}
+.sh-workspace .detail-head :is(p,.eyebrow){color:#d2deed}
+.sh-workspace .detail-head .status-badge{background:#fff;color:#26354b;border-color:#fff;font-weight:700}
+.sh-workspace .unit-panel>.section-head{background:#263b57;color:#fff}
+.sh-workspace .unit-panel>.section-head h2,.sh-workspace .unit-panel #unit-label{color:#fff}
+.sh-workspace .report-card{background:#f2f5fa;border-color:#cbd6e4;font-size:14px}
+.sh-workspace :is(.section-title,.detail-body label,.info-grid,.unit-extra){font-size:14px}
+.sh-workspace :is(.status-choice,.save-area button){min-height:44px;font-size:14px}
+.sh-workspace .status-choice.selected{background:#263b57;color:white;border-color:#263b57}
+.sh-workspace .save-area{border-top:2px solid #ccd8e9;background:#edf2fa}
+.sh-workspace .legend{font-size:12px;font-weight:600;color:#4d6077;background:#fff}
+.sh-workspace .status-change-log{background:#eef3fb;border-left:3px solid #5574be;padding:9px 12px;color:#26354b;font-size:14px}
+@media(max-width:1100px){.sh-workspace .metric small{font-size:12px}.sh-workspace .sh-sidebar a.sh-link{font-size:13px}}

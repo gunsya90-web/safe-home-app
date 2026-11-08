@@ -372,6 +372,7 @@
 
   // 세대 상태 정의 (Live Occupancy Status)
   SAFEHOME.STATUS_META = {
+    rescuing: { label: '구조 중', color: '#C47612', desc: '현장 구조 활동 진행 중', icon: SAFEHOME.icon2('running') },
     unresponded: { label: '미응답', color: '#9AA0A6', desc: '아직 응답이 없는 세대', icon: SAFEHOME.icon2('help') },
     waiting: { label: '세대 내 대기', color: '#1565C0', desc: '실내 대기 상태 · 별도 대피공간 설치 여부 확인', icon: SAFEHOME.icon2('home') },
     moving: { label: '이동 중', color: '#F0A500', desc: '이동 경로와 도착 여부 확인 필요', icon: SAFEHOME.icon2('running') },

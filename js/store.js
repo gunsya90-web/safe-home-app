@@ -47,8 +47,8 @@ function incident(id){return id && has(state.incidents,id)?state.incidents[id]:n
 function selected(id){return incident(id===undefined?activeId:id);}
 function writable(id){var i=selected(id);if(!i||i.closed){fail('대상 사건이 없거나 종료되었습니다. 다른 사건에는 반영하지 않았습니다.');return null;}return i;}
 function uid(){return window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);}
-function norm(x){return {apt:String(x.apt||'').trim(),dong:S.normalizeDong(x.dong),ho:S.normalizeHo(x.ho),buildingId:x.buildingId||null};}
-function buildingFor(x){if(x.buildingId){var b=S.BUILDINGS[x.buildingId];return b&&S.addrEquals(x.apt,x.dong,b.apt,b.dong)?b:null;}return S.findBuildingByAddress(x.apt,x.dong);}
+function norm(x){return {apt:String(x.apt||'').trim(),dong:S.normalizeDong(x.dong),ho:S.normalizeHo(x.ho),buildingId:x.buildingId||null,complexCode:String(x.complexCode||'').trim()||null};}
+function buildingFor(x){if(x.buildingId){var b=S.BUILDINGS[x.buildingId];return b&&S.addrEquals(x.apt,x.dong,b.apt,b.dong)?b:null;}return x.complexCode?Object.values(S.BUILDINGS).find(function(b){return b.complexCode===x.complexCode&&S.addrEquals(x.apt,x.dong,b.apt,b.dong);})||null:S.findBuildingByAddress(x.apt,x.dong);}
 function findOpen(id){return Object.values(state.incidents).find(function(i){return !i.closed&&i.buildingId===id;})||null;}
 function target(x,id){if(id){var i=incident(id);return i&&!i.closed&&S.addrEquals(x.apt,x.dong,i.apt,i.dong)&&(!x.buildingId||x.buildingId===i.buildingId)?i:null;}var b=buildingFor(x);return b?findOpen(b.id):null;}
 function reportKey(apt,dong,ho,id,bid){return JSON.stringify([id||'pending',bid||S.normalizeAddr(apt),S.normalizeDong(dong),S.normalizeHo(ho)]);}
@@ -56,9 +56,11 @@ S.reportKey=reportKey;
 function unit(i,ho){return i&&has(i.units,S.normalizeHo(ho))?i.units[S.normalizeHo(ho)]:null;}
 function fromResult(k){return ({A:'moving',B:'waiting',C:'waiting',D:'moving',E:'moving',F:'danger',G:'moving'})[k]||'unresponded';}
 function applyReport(r,i){
- var u=unit(i,r.ho);if(!u)return false;
+ var u=unit(i,r.ho);if(!u)return false;if(u.searchRecord&&u.searchRecord.status==='completed'&&r.urgency==='critical'&&!r.fieldOnly)u.searchRecord.requiresReview=true;
+ if(r.fieldOnly){u.fieldObservation=copy(r.fieldObservation);u.status=u.fieldStatus=r.fieldObservation.status;u.fieldConfirmedAt=u.updatedAt=r.fieldObservation.at;u.needsReview=false;r.matchedIncidentId=r.incidentId=i.id;r.buildingId=i.buildingId;return true;}
  Object.assign(u,{answers:copy(r.answers||{}),resultKey:r.resultKey,urgency:r.urgency,notes:r.notes||[],occupants:r.occupants,hasVulnerable:r.hasVulnerable,reportedStatus:r.status,reportedAt:r.updatedAt,updatedAt:r.updatedAt});
- if(u.fieldStatus){u.needsReview=u.fieldStatus!==r.status;u.status=u.needsReview&&(r.urgency==='critical'||r.status==='danger')?'danger':u.fieldStatus;}
+ if(r.fieldObservation&&!u.fieldObservation){u.fieldObservation=copy(r.fieldObservation);u.fieldStatus=r.fieldObservation.status;u.fieldConfirmedAt=r.fieldObservation.at;}
+ if(u.fieldStatus){u.needsReview=u.fieldStatus!==r.status||r.urgency==='critical';u.status=u.needsReview&&(r.urgency==='critical'||r.status==='danger')?'danger':u.fieldStatus;}
  else u.status=u.isFireOrigin&&r.status!=='safe'?'danger':r.status;
  r.matchedIncidentId=r.incidentId=i.id;r.buildingId=i.buildingId;return true;
 }
@@ -95,13 +97,22 @@ var store={
   if(p.incidentId&&!i)return fail('신고 대상 사건이 유효하지 않습니다.');
   if(i&&Date.now()>i.residentLinkExp)return fail('입주민 링크가 만료되었습니다.');
   if(i&&!unit(i,x.ho))return fail('등록된 세대가 아닙니다. 호수를 확인해주세요.');
-  var b=buildingFor(x),existing=reportAt(x.apt,x.dong,x.ho,i&&i.id,b&&b.id);
-  var key=existing?existing.key:reportKey(x.apt,x.dong,x.ho,i&&i.id,b&&b.id),old=state.reports[key];
-  var r=Object.assign({},x,{key:key,buildingId:b&&b.id||null,incidentId:i&&i.id||null,matchedIncidentId:null,answers:copy(p.answers||{}),resultKey:p.resultKey,urgency:p.urgency,notes:p.notes||[],status:fromResult(p.resultKey),
-   occupants:Number.isInteger(p.occupants)&&p.occupants>0?p.occupants:null,hasVulnerable:typeof p.hasVulnerable==='boolean'?p.hasVulnerable:null,
+  var b=buildingFor(x),existing=x.complexCode&&!i?Object.values(state.reports).find(function(r){return !r.archived&&!r.incidentId&&r.complexCode===x.complexCode&&r.dong===x.dong&&r.ho===x.ho;}):reportAt(x.apt,x.dong,x.ho,i&&i.id,b&&b.id);
+  var key=existing?existing.key:reportKey(x.apt,x.dong,x.ho,i&&i.id,b&&b.id||x.complexCode),old=state.reports[key];
+  var r=Object.assign({},x,{fieldObservation:old&&old.fieldObservation||null,version:uid(),readReceipt:null,key:key,buildingId:b&&b.id||null,incidentId:i&&i.id||null,matchedIncidentId:null,answers:copy(p.answers||{}),resultKey:p.resultKey,urgency:p.urgency,notes:p.notes||[],status:fromResult(p.resultKey),
+   occupants:Number.isInteger(p.occupants)&&p.occupants>0?p.occupants:null,currentPlace:String(p.currentPlace||'').trim().slice(0,100),hasVulnerable:typeof p.hasVulnerable==='boolean'?p.hasVulnerable:null,
    ruleVersion:S.RULE_VERSION,facilityVersion:i?i.facilityVersion:(b?store.getEffectiveBuilding(b.id).facilityVersion:null),
    previous:old?(old.previous||[]).concat([{at:old.updatedAt,status:old.status,resultKey:old.resultKey}]):[],updatedAt:Date.now(),auto:false});
-  state.reports[key]=r;if(i)applyReport(r,i);log('입주민',x.ho+'호 상태 접수',i&&i.id);return commit()?key:false;
+  state.reports[key]=r;if(i)applyReport(r,i);log('입주민',x.ho+'호 상태 접수',i&&i.id);Object.assign(state.actionLog[0],{reportKey:key,buildingId:r.buildingId,ho:r.ho,apt:r.apt,dong:r.dong});return commit()?key:false;
+ },
+ acknowledgeReport:function(p){
+  var r=state.reports[p.reportKey],actor=String(p.actor||'').trim();
+  if(!r||r.archived||r.fieldOnly||!actor||actor.length>40)return fail('대상 신고와 담당자를 확인해주세요.');
+  if(r.incidentId&&!writable(r.incidentId))return false;
+  if(p.reportVersion!==(r.version||r.updatedAt))return fail('신고 내용이 변경되었습니다. 최신 신고를 다시 확인해주세요.');
+  if(r.readReceipt&&r.readReceipt.version===(r.version||r.updatedAt))return true;
+  r.readReceipt={version:r.version||r.updatedAt,actor:actor,at:Date.now()};
+  state.actionLog.unshift({actor:actor,action:'상황실 신고 열람 확인',reportKey:r.key,incidentId:r.incidentId||null,ho:r.ho,at:r.readReceipt.at,reportVersion:r.readReceipt.version});return commit();
  },
  getReport:function(k){return state.reports[k]||null;},getReportByAddress:reportAt,
  getPendingReports:function(){return Object.values(state.reports).filter(function(r){return !r.archived&&!r.incidentId&&!r.matchedIncidentId;}).sort(function(a,b){return b.updatedAt-a.updatedAt;});},
@@ -141,7 +152,7 @@ var store={
   var generated=S.generateUnits(b,ho);if(ho&&!has(generated,ho))return fail('화재 호수가 등록된 세대 목록에 없습니다.');
   var i=editId?writable(editId):findOpen(bid);if(editId&&!i)return false;
   if(i&&i.buildingId!==bid)return fail('다른 건물로의 정정은 기존 사건 종료 후 새 사건으로 등록해주세요.');
-  if(!i){var now=Date.now();i={id:'inc-'+uid(),buildingId:bid,apt:b.apt,dong:b.dong,officialHo:ho||null,confirmedAt:now,closed:false,units:generated,afp:copy(b.core),buildingSnapshot:copy(b),facilityVersion:b.facilityVersion,dispatchNote:'',casualties:{dead:0,severe:0,minor:0,guided:0,selfEvacuated:0},residentLinkExp:now+state.linkTtlHours*3600000,firefighterLinkExp:now+state.linkTtlHours*3600000};state.incidents[i.id]=i;}
+  if(!i){var now=Date.now();i={id:'inc-'+uid(),buildingId:bid,apt:b.apt,dong:b.dong,officialHo:ho||null,confirmedAt:now,closed:false,units:generated,afp:copy(b.core),unitFacilitiesSnapshot:copy(state.unitFacilities||{}),buildingSnapshot:copy(b),facilityVersion:b.facilityVersion,dispatchNote:'',casualties:{dead:0,severe:0,minor:0,guided:0,selfEvacuated:0},residentLinkExp:now+state.linkTtlHours*3600000,firefighterLinkExp:now+state.linkTtlHours*3600000};state.incidents[i.id]=i;}
   else {i.officialHo=ho||null;Object.values(i.units).forEach(function(u){u.isFireOrigin=u.ho===ho;if(!u.fieldStatus)u.status=u.isFireOrigin?'danger':(u.reportedStatus||'unresponded');});}
   // 관리자가 선택한 미확정 신고만 연결. 과거 기록의 자동 재사용 금지.
   if(reportId){var r=state.reports[reportId];if(!r||r.archived||r.incidentId||!S.addrEquals(r.apt,r.dong,i.apt,i.dong)||(r.buildingId&&r.buildingId!==bid)||!applyReport(r,i)){state=copy(snapshot);return fail('선택한 신고와 사건의 대상이 일치하지 않습니다.');}}
@@ -154,6 +165,72 @@ var store={
  setUnitAfpOverride:function(ho,o,id){var i=writable(id),u=unit(i,ho);if(!u)return false;u.afpOverride=tri(o,S.AFP_CORE_FIELDS);i.facilityVersion=Date.now();log('상황실',S.normalizeHo(ho)+'호 시설 예외 변경',i.id);return commit();},
  setDispatchNote:function(text,id){var i=writable(id);if(!i)return false;i.dispatchNote=String(text).slice(0,5000);i.noteUpdatedAt=Date.now();i.noteAcknowledgedAt=null;log('상황실','메모 전달',i.id);return commit();},
  acknowledgeNote:function(id){var i=writable(id);if(!i)return false;i.noteAcknowledgedAt=Date.now();log('소방대원','메모 수신 확인',i.id);return commit();},
+ getUnitFacility:function(bid,ho,id){
+  ho=S.normalizeHo(ho);var i=id?incident(id):null;if(id&&(!i||i.buildingId!==bid))return null;
+  var records=i?i.unitFacilitiesSnapshot||{}:state.unitFacilities||{},record=records[JSON.stringify([bid,ho])];
+  var u=i?unit(i,ho):null;if(!record&&!(u&&u.afpOverride))return null;
+  var out=copy(record||{core:{},locations:{},source:'사건 세대별 등록',inspector:'',verifiedAt:''});if(u&&u.afpOverride)out.core=Object.assign({},out.core,u.afpOverride);return out;
+ },
+ setUnitFacility:function(p){
+  if(p.expectedRevision!==state.revision)return fail('자료가 변경되었습니다. 최신 자료를 다시 불러와주세요.');
+  var b=store.getEffectiveBuilding(p.buildingId),ho=S.normalizeHo(p.ho),actor=String(p.actor||'').trim();
+  if(!b||!has(S.generateUnits(b,null),ho)||!actor||actor.length>40)return fail('등록 건물·세대·확인자를 선택해주세요.');
+  var plan=String(p.plan||'');if(plan.length>2800000||plan&&!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(plan))return fail('평면도는 2MB 이하 PNG·JPG·WebP 파일로 등록해주세요.');
+  var source=String(p.source||'').trim(),date=String(p.verifiedAt||'');if(!source||source.length>300||!/^\d{4}-\d{2}-\d{2}$/.test(date))return fail('확인일과 자료 출처를 입력해주세요.');
+  var key=JSON.stringify([b.id,ho]),before=copy((state.unitFacilities||{})[key]||null),locations={};
+  ['inUnitShelter','downwardEvacuationHatch','lightPartition'].forEach(function(k){locations[k]=String((p.locations||{})[k]||'').slice(0,200);});
+  state.unitFacilities=state.unitFacilities||{};state.unitFacilities[key]={core:tri(p.core,S.AFP_CORE_FIELDS),locations:locations,plan:plan,source:source,inspector:actor,verifiedAt:date,updatedAt:Date.now()};
+  state.actionLog.unshift({actor:actor,action:'세대 시설·평면도 갱신',buildingId:b.id,ho:ho,at:Date.now(),facilityBefore:before?{verifiedAt:before.verifiedAt,core:before.core}:null,facilityAfter:{verifiedAt:date,core:copy(state.unitFacilities[key].core)}});return commit();
+ },
+ updateUnitSearch:function(p){
+  var i=writable(p.incidentId);if(!i)return false;var u=unit(i,p.ho),actor=String(p.actor||'').trim(),team=String(p.team||'').trim();
+  if(!u||!actor||actor.length>40||team.length>40||['unstarted','searching','completed','recheck'].indexOf(p.status)<0)return fail('대상 세대·검색 상태·담당자를 확인해주세요.');
+  if(p.expectedRevision!==state.revision)return fail('새 기록이 도착했습니다. 최신 정보를 다시 확인해주세요.');
+  var spaces=String(p.spaces||'').trim(),note=String(p.note||'').trim();if(spaces.length>300||note.length>1000||p.status==='completed'&&!spaces)return fail('검색 완료는 확인한 공간을 입력해야 합니다.');
+  var before=copy(u.searchRecord||null),at=Date.now();u.searchRecord={status:p.status,spaces:spaces,note:note,actor:actor,team:team,at:at,startedAt:p.status==='searching'?at:before&&before.startedAt||null,completedAt:p.status==='completed'?at:null,requiresReview:false};
+  state.actionLog.unshift({actor:actor,team:team,action:'인명검색 '+({unstarted:'미착수',searching:'진행',completed:'완료',recheck:'재검색 필요'}[p.status]),incidentId:i.id,ho:u.ho,at:at,searchBefore:before,searchAfter:copy(u.searchRecord)});return commit();
+ },
+ getMessages:function(id){return Object.values(state.messages||{}).filter(function(m){return !id||m.incidentId===id;}).sort(function(a,b){return b.at-a.at;});},
+ sendMessage:function(p){
+  var i=writable(p.incidentId);if(!i)return false;var actor=String(p.actor||'').trim(),body=String(p.body||'').trim(),recipient=String(p.recipient||'현장 전체').trim(),ho=S.normalizeHo(p.ho);
+  if(!actor||actor.length>40||!body||body.length>1000||!recipient||recipient.length>40)return fail('담당자·수신 대상·메시지(1~1000자)를 확인해주세요.');
+  if(ho&&!unit(i,ho))return fail('메시지 대상 세대가 사건에 없습니다.');
+  var id='msg-'+uid(),at=Date.now(),m={id:id,incidentId:i.id,buildingId:i.buildingId,ho:ho||null,actor:actor,recipient:recipient,body:body,urgent:p.urgent===true,status:'sent',at:at,history:[{status:'sent',actor:actor,at:at}]};
+  state.messages=state.messages||{};state.messages[id]=m;state.actionLog.unshift({actor:actor,action:'현장 메시지 발신 · '+recipient,incidentId:i.id,ho:ho||null,messageId:id,at:at});return commit()?id:false;
+ },
+ updateMessage:function(p){
+  var m=(state.messages||{})[p.id];if(!m||!writable(m.incidentId))return false;var actor=String(p.actor||'').trim(),team=String(p.team||'').trim();
+  if(!actor||actor.length>40)return fail('대원 이름을 먼저 설정해주세요.');if(m.recipient!=='현장 전체'&&m.recipient!==team&&m.recipient!==actor)return fail('수신 대상인 대원 또는 팀만 응답할 수 있습니다.');
+  var order=['sent','acknowledged','inprogress','done'];if(m.status!==p.expectedStatus||order.indexOf(p.status)!==order.indexOf(m.status)+1)return fail('메시지 상태가 변경되었습니다. 최신 상태를 확인해주세요.');
+  var before=m.status,at=Date.now();m.status=p.status;m.history.push({status:p.status,actor:actor,team:team,at:at});state.actionLog.unshift({actor:actor,team:team,action:'현장 메시지 '+({acknowledged:'확인',inprogress:'조치 중',done:'완료'}[p.status]),incidentId:m.incidentId,ho:m.ho,messageId:m.id,at:at,messageBefore:before,messageAfter:m.status});return commit();
+ },
+ recordCall:function(p){
+  var i=writable(p.incidentId);if(!i)return false;var actor=String(p.actor||'').trim(),ho=S.normalizeHo(p.ho),note=String(p.note||'').trim(),phone=String(p.phone||'').trim();
+  if(!actor||actor.length>40||!unit(i,ho)||['connected','noanswer','callback'].indexOf(p.outcome)<0||!note||note.length>1000||phone.length>30)return fail('담당자·대상 호수·통화 결과·메모를 확인해주세요.');
+  var at=Date.now(),r={id:'call-'+uid(),incidentId:i.id,ho:ho,actor:actor,phone:phone,outcome:p.outcome,note:note,at:at};state.calls=state.calls||[];state.calls.unshift(r);state.actionLog.unshift({actor:actor,action:'통화 기록 · '+({connected:'연결',noanswer:'부재',callback:'재연락 필요'}[p.outcome]),incidentId:i.id,ho:ho,callId:r.id,at:at});return commit();
+ },
+ getCalls:function(id){return (state.calls||[]).filter(function(r){return !id||r.incidentId===id;});},
+ updateFieldObservation:function(p){
+  var actor=String(p.actor||'').trim(), team=String(p.team||'').trim();
+  if(!actor||actor.length>40||team.length>40)return fail('수정자 이름을 입력해주세요. 이름·팀은 40자 이내입니다.');
+  if(p.expectedRevision!==state.revision)return fail('새 기록이 도착했습니다. 최신 정보를 다시 확인한 뒤 저장해주세요.');
+  if(['danger','rescuing','waiting','moving','safe','unresponded'].indexOf(p.status)<0||['unknown','responded','unresponded','lost'].indexOf(p.contact)<0)return fail('현장 상태와 연락 상태를 확인해주세요.');
+  var counts=['rescued','remaining'];for(var k of counts){if(p[k]!==null&&(!Number.isInteger(p[k])||p[k]<0||p[k]>999))return fail('인원은 미확인 또는 0~999명으로 입력해주세요.');}
+  if(p.reviewResolution&&!String(p.verificationMethod||'').trim())return fail('재확인 방법과 근거를 입력해주세요.');
+  if(p.status==='safe'&&p.remaining!==0)return fail('안전 확인은 잔류 인원 0명을 확인한 뒤 저장해주세요.');
+  var i=null,r=null,u=null;
+  if(p.incidentId){i=writable(p.incidentId);if(!i)return false;u=unit(i,p.ho);if(!u)return fail('대상 세대가 없습니다.');}
+  else {r=state.reports[p.reportKey];
+   if(!p.reportKey&&p.buildingId){var b=store.getEffectiveBuilding(p.buildingId),ho=S.normalizeHo(p.ho);if(!b||!has(S.generateUnits(b,null),ho))return fail('등록된 세대가 아닙니다.');if(findOpen(b.id))return fail('진행 사건을 선택한 뒤 수정해주세요.');var key=reportKey(b.apt,b.dong,ho,null,b.id);r=state.reports[key];if(!r){r={key:key,buildingId:b.id,apt:b.apt,dong:b.dong,ho:ho,incidentId:null,matchedIncidentId:null,fieldOnly:true,status:'unresponded',answers:{},updatedAt:Date.now()};state.reports[key]=r;}}
+   if(!r||r.archived||r.incidentId||r.matchedIncidentId||S.normalizeHo(p.ho)!==r.ho)return fail('신고가 사건에 연결되었거나 유효하지 않습니다. 최신 정보를 확인해주세요.');}
+  var t=u||r, before=copy(t.fieldObservation||null),at=Date.now();
+  var source=p.source==='situation'||p.source==='field'?p.source:(team==='상황실'?'situation':'field');
+  var after={source:source,verificationMethod:String(p.verificationMethod||'').trim().slice(0,200),status:p.status,contact:p.contact,rescued:p.rescued,remaining:p.remaining,note:String(p.note||'').trim().slice(0,1000),actor:actor,team:team,at:at};
+  t.fieldObservation=after;
+  if(u){u.status=u.fieldStatus=p.status;u.fieldConfirmedAt=u.updatedAt=at;u.needsReview=false;}
+  state.actionLog.unshift({actor:actor,team:team,action:source==='situation'?'상황실 판단 수정':'현장 확인 수정',incidentId:i?i.id:null,reportKey:r?r.key:null,buildingId:i?i.buildingId:r.buildingId,apt:i?i.apt:r.apt,dong:i?i.dong:r.dong,ho:S.normalizeHo(p.ho||r.ho),at:at,before:before,after:copy(after)});
+  return commit();
+ },
  firefighterSetStatus:function(ho,status,id){var i=writable(id),u=unit(i,ho);if(!u||!has(S.STATUS_META,status))return false;u.status=u.fieldStatus=status;u.fieldConfirmedAt=u.updatedAt=Date.now();u.needsReview=false;log('소방대원',S.normalizeHo(ho)+'호 '+status,i.id);return commit();},
  reset:function(){if(blocked)return fail('원본 복구가 먼저 필요합니다. 자동 초기화하지 않았습니다.');state=fresh();location=norm({});activeId=null;return commit();}
 };

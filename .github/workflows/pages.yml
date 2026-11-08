@@ -38,8 +38,10 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p dist
-          cp index.html sw.js manifest.webmanifest dist/
+          cp index.html resident.html field.html situation.html facilities.html data-review.html sw.js manifest.webmanifest dist/
           cp -r css js icons dist/
+          # Local reference collection is excluded until redistribution terms are verified.
+          echo 'window.SAFEHOME_COMPLEX_REFERENCES={checkedOn:null,fields:[],complexes:[]};' > dist/js/complex-reference-data.js
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
