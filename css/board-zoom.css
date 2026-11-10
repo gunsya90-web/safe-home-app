@@ -6,3 +6,7 @@
 .sh-workspace .tactical-viewport,.tactical-viewport{height:65dvh;min-height:320px;max-height:800px;overflow:auto;padding:12px;background:#e8edf4;overscroll-behavior:contain}
 .sh-workspace .zoom-board,.zoom-board{min-width:0;width:max-content;max-height:none;min-height:0;overflow:visible;padding:8px}
 .map-tools [hidden]{display:none!important}
+/* Receipt and responder status are separate signals. */
+.sh-workspace .unit.received strong,.sh-workspace .desk-unit.received b{color:#bd241b;background:#ffe4df;border-radius:5px;padding:2px 5px}
+.sh-workspace .unit.blank,.sh-workspace .desk-unit.blank{background:#fff;border-color:#c7d1dc;color:#5b6878}
+.sh-workspace .metrics,.sh-workspace .event-counts{grid-template-columns:repeat(5,minmax(0,1fr))}

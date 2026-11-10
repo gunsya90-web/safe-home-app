@@ -1,6 +1,7 @@
 (function(){'use strict';
 const S=window.SAFEHOME,$=id=>document.getElementById(id),esc=S.escapeHtml;
-const labels={danger:'구조 필요',rescuing:'구조 중',waiting:'세대 대기',moving:'이동 중',safe:'안전',unresponded:'미응답'},msgLabels={sent:'현장 미확인',acknowledged:'확인함',inprogress:'조치 중',done:'완료'},callLabels={connected:'연결',noanswer:'부재',callback:'재연락 필요'};
+const labels={danger:'구조 필요',rescuing:'구조 중',waiting:'세대 대기',safe:'안전',unresponded:'미응답'},msgLabels={sent:'현장 미확인',acknowledged:'확인함',inprogress:'조치 중',done:'완료'},callLabels={connected:'연결',noanswer:'부재',callback:'재연락 필요'};
+Object.defineProperties(labels,{blank:{value:''},moving:{value:'이전 이동 기록'}});
 let queue='active',incidentId=null,reportKey=null,ho='',history='activity',callTarget='',callIncidentId=null,toastTimer;
 try{$('desk-actor').value=sessionStorage.getItem('safehome_desk_actor')||'';}catch{}
 $('desk-actor').oninput=()=>{try{sessionStorage.setItem('safehome_desk_actor',$('desk-actor').value);}catch{}};
@@ -27,7 +28,7 @@ function openIncidents(){return S.store.listIncidents().filter(i=>!i.closed);}
 function pending(){return S.store.getPendingReports().filter(r=>!r.fieldOnly);}
 function current(){const i=S.store.getIncident(incidentId);return i&&!i.closed?i:null;}
 function currentReport(){return S.store.getReport(reportKey);}
-function rows(){const i=current();if(i)return S.store.getUnits(i.id);const r=currentReport();return r?[{ho:r.ho,floor:S.unitFloor(r.ho),status:r.fieldObservation?.status||r.status,report:r,fieldObservation:r.fieldObservation,occupants:r.occupants}]:[];}
+function rows(){const i=current();if(i)return S.store.getUnits(i.id).map(u=>S.UnitDisplay.project(u,reportFor(u)));const r=currentReport();return r?[{ho:r.ho,floor:S.unitFloor(r.ho),status:r.fieldObservation?.status||r.status,report:r,fieldObservation:r.fieldObservation,occupants:r.occupants}].map(u=>S.UnitDisplay.project(u,r)):[];}
 function reportFor(unit){const i=current();if(i)return Object.values(S.store.getState().reports).find(r=>r.incidentId===i.id&&r.ho===unit.ho&&!r.archived&&!r.fieldOnly);return unit.report;}
 function visibleMessages(){return current()?S.store.getMessages(incidentId):[];}
 const drafts=new Map();
@@ -38,6 +39,7 @@ function choose(id,key){if(S.UnitTools.isDirty()&&!confirm('작성 중인 검색
 function selectUnit(value){if(S.UnitTools.isDirty()&&!confirm('작성 중인 검색 기록을 버리고 이동할까요?'))return false;S.UnitTools.reset();ho=value;renderBoard();renderUnit();if(!$('message-body').value.trim())$('message-ho').value=value;}
 function render(){
  const list=openIncidents();if(incidentId&&!current()){incidentId=null;ho='';}if(reportKey&&!pending().some(r=>r.key===reportKey))reportKey=null;
+ if(queue==='active'&&!incidentId&&!list.length&&pending().length)queue='pending';
  if(queue==='active'&&!incidentId&&list.length)incidentId=list[0].id;if(queue==='pending'&&!reportKey&&pending().length)reportKey=pending()[0].key;
  const allMessages=S.store.getMessages().filter(m=>list.some(i=>i.id===m.incidentId));
  const activeCalls=S.store.getCalls().filter(c=>list.some(i=>i.id===c.incidentId));const latestCalls=activeCalls.filter((c,n,a)=>a.findIndex(x=>x.incidentId===c.incidentId&&x.ho===c.ho)===n);
@@ -56,7 +58,7 @@ function render(){
  if(S.store.getError())toast(S.store.getError());
 }
 function renderBoard(){const data=rows(),floor=$('desk-floor').value,filter=$('desk-filter').value,floors=[...new Set(data.map(u=>u.floor))].sort((a,b)=>(b??-1)-(a??-1));const lines=[...new Set(data.map(u=>String(u.ho).slice(-2)))].sort((a,b)=>a.localeCompare(b,'ko',{numeric:true}));
- $('desk-board').innerHTML=floors.filter(f=>floor==='all'||String(f??'unknown')===floor).map(f=>'<div class="floor-row"><span class="floor">'+(f===null?'미상':f+'F')+'</span>'+lines.map(line=>{const u=data.find(u=>u.floor===f&&String(u.ho).slice(-2)===line);return u?'<button class="desk-unit '+esc(u.status)+(ho===u.ho?' selected':'')+(filter!=='all'&&filter!==u.status?' dim':'')+'" data-unit="'+esc(u.ho)+'" aria-label="'+esc(u.ho+'호 '+labels[u.status])+'"><b>'+esc(u.ho)+(u.isFireOrigin?' 🔥':'')+'</b><small>'+labels[u.status]+'</small>'+(u.searchRecord?'<span class="search-mark">'+(u.searchRecord.requiresReview?'재검색':({completed:'검색 완료',searching:'검색 중',recheck:'재검색',unstarted:'미착수'}[u.searchRecord.status]))+'</span>':'')+'</button>':'<div class="desk-unit" aria-label="등록 세대 없음"><small>—</small></div>';}).join('')+'</div>').join('')||'<div class="empty">선택한 사건의 세대 현황이 표시됩니다.</div>';
+ $('desk-board').innerHTML=floors.filter(f=>floor==='all'||String(f??'unknown')===floor).map(f=>'<div class="floor-row"><span class="floor">'+(f===null?'미상':f+'F')+'</span>'+lines.map(line=>{const u=data.find(u=>u.floor===f&&String(u.ho).slice(-2)===line);return u?'<button class="desk-unit '+esc(u.status)+(u.received?' received':'')+(ho===u.ho?' selected':'')+(filter!=='all'&&filter!==u.status?' dim':'')+'" data-unit="'+esc(u.ho)+'" aria-label="'+esc(u.ho+'호 '+labels[u.status])+'"><b>'+esc(u.ho)+(u.isFireOrigin?' 🔥':'')+'</b><small>'+labels[u.status]+'</small>'+(u.searchRecord?'<span class="search-mark">'+(u.searchRecord.requiresReview?'재검색':({completed:'검색 완료',searching:'검색 중',recheck:'재검색',unstarted:'미착수'}[u.searchRecord.status]))+'</span>':'')+'</button>':'<div class="desk-unit" aria-label="등록 세대 없음"><small>—</small></div>';}).join('')+'</div>').join('')||'<div class="empty">선택한 사건의 세대 현황이 표시됩니다.</div>';
  $('desk-board').querySelectorAll('[data-unit]').forEach(b=>{b.onclick=()=>selectUnit(b.dataset.unit);b.oncontextmenu=e=>{e.preventDefault();if(selectUnit(b.dataset.unit)===false)return;openStatus(b.dataset.unit,e.clientX,e.clientY);};});
 }
 function renderUnit(){if(S.UnitTools.isDirty())return;const u=rows().find(u=>u.ho===ho);$('unit-label').textContent=u?u.ho+'호':'미선택';if(!u){const r=currentReport();$('unit-info').innerHTML=r?'<div class="warn">아직 사건에 연결되지 않은 신고입니다.</div><button class="primary" id="confirm-report" style="margin-top:12px" '+(!r.buildingId?'disabled':'')+'>이 신고로 사건 시작 · 데모</button><p class="form-note">등록 건물의 신고만 연결할 수 있습니다.</p>':'<div class="empty">작전도에서 세대를 선택하세요.<br>신고·현장 확인과 연락 기능이 표시됩니다.</div>';if(r)$('unit-info').insertAdjacentHTML('beforeend',S.ComplexInfo.html(r));if($('confirm-report'))$('confirm-report').onclick=()=>{if(!actor())return;const id=S.store.confirmIncidentFromReport(r.key,r.buildingId);if(id){queue='active';choose(id,null);selectUnit(r.ho);toast('선택한 신고를 사건에 연결했습니다.');}else toast(S.store.getError());};return;}
@@ -100,6 +102,7 @@ function openStatus(value,x,y){
 function hideStatus(){statusMenu.hidden=true;}
 document.addEventListener('click',e=>{if(!e.composedPath().includes(statusMenu)&&!e.target.closest('#open-status'))hideStatus();});document.addEventListener('keydown',e=>{if(e.key==='Escape')hideStatus();});window.addEventListener('resize',hideStatus);document.addEventListener('scroll',e=>{if(!statusMenu.contains(e.target)&&!document.getElementById('safe-method'))hideStatus();},true);
 $('workspace-toggle').onclick=()=>{const open=document.body.classList.toggle('show-workspace');$('workspace-toggle').setAttribute('aria-expanded',String(open));};
+const requestedReport=S.store.getReport(new URLSearchParams(location.search).get('report'));if(requestedReport&&!requestedReport.archived){if(requestedReport.incidentId){incidentId=requestedReport.incidentId;ho=requestedReport.ho;}else{queue='pending';reportKey=requestedReport.key;ho=requestedReport.ho;}}
 S.store.subscribe(()=>{if(!document.getElementById('safe-method'))hideStatus();render();});render();
 setInterval(()=>{document.querySelectorAll('[data-elapsed]').forEach(el=>{el.textContent=elapsed(el.dataset.elapsed);});},1000);
 })();

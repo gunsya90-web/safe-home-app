@@ -1,0 +1,4 @@
+const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+const window={SAFEHOME:{}};vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../js/unit-display.js'),'utf8'),{window});const project=window.SAFEHOME.UnitDisplay.project;
+test('미접수 기본값은 공란이고 명시적 미응답 기록은 유지',()=>{const raw={status:'unresponded'};assert.equal(project(raw).status,'blank');assert.equal(raw.status,'unresponded');assert.equal(project({...raw,fieldStatus:'unresponded'}).status,'unresponded');});
+test('입주민 접수 표시와 현장 상태를 분리하고 과거 이동 기록을 보존',()=>{const raw={status:'moving'};assert.equal(project(raw,{key:'report'}).received,true);assert.equal(project(raw,{fieldOnly:true}).received,false);assert.equal(project(raw).status,'blank');assert.equal(raw.status,'moving');assert.equal(project({status:'safe'},{key:'report'}).status,'safe');});

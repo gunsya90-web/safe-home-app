@@ -40,6 +40,9 @@ function reload(){
  var x=JSON.parse(raw);if(!valid(x))throw Error();state=x;snapshot=copy(x);baseRaw=raw;error='';rebuild();notify();
  }catch(e){fail('다른 탭의 기록을 읽지 못했습니다. 현재 기록을 유지합니다.');}
 }
+window.addEventListener('focus',reload);
+window.addEventListener('pageshow',reload);
+if(typeof document!=='undefined')document.addEventListener('visibilitychange',function(){if(!document.hidden)reload();});
 window.addEventListener('storage',function(e){if(e.key===KEY)reload();});
 try{channel=new BroadcastChannel('safehome-v5');channel.onmessage=reload;}catch(e){}
 function log(actor,action,id){state.actionLog.unshift({actor:actor,action:action,incidentId:id||null,at:Date.now()});}
