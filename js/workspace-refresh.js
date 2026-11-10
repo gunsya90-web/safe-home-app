@@ -3,15 +3,15 @@
  const page=location.pathname.split('/').pop()||'index.html';
  const role=new URLSearchParams(location.search).get('role');
  const isResident=page==='resident.html';
- const workPages=['situation.html','field.html','facilities.html','data-review.html'];
+ const workPages=['situation.html','field.html','facilities.html','data-review.html','resident-reports.html'];
  const isAdmin=page==='index.html'&&role==='admin';
  document.body.classList.add('sh-refresh');
  if(isResident){document.body.classList.add('sh-resident');return;}
  if(!workPages.includes(page)&&!isAdmin)return;
  document.body.classList.add('sh-workspace');
  if(isAdmin)document.body.classList.add('sh-admin');
- if(['facilities.html','data-review.html'].includes(page))document.body.classList.add('sh-data');
- const items=[['사건 운영',[['situation.html','상황실','▤'],['field.html','현장 활동','▦']]],['자료 · 관리',[['facilities.html','건물·시설 자료','⌂'],['data-review.html','공공자료 검토','≡'],['index.html?role=admin','사건·링크 관리','↗']]]];
+ if(['facilities.html','data-review.html','resident-reports.html'].includes(page))document.body.classList.add('sh-data');
+ const items=[['사건 운영',[['resident-reports.html','입주민 신고','⌂'],['situation.html','상황실','▤'],['field.html','현장 활동','▦']]],['자료 · 관리',[['facilities.html','건물·시설 자료','⌂'],['data-review.html','공공자료 검토','≡'],['index.html?role=admin','사건·링크 관리','↗']]]];
  const aside=document.createElement('aside');aside.className='sh-sidebar';aside.id='sh-workspace-nav';aside.setAttribute('aria-label','업무용 앱 탐색');
  const logo=document.createElement('div');logo.innerHTML='<a class="sh-logo" href="situation.html"><span class="sh-monogram" aria-hidden="true">S</span>SAFEHOME</a><span class="sh-caption">운영 워크스페이스</span>';aside.append(logo);
  const nav=document.createElement('nav');nav.setAttribute('aria-label','업무 메뉴');
