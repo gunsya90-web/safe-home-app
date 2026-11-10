@@ -67,6 +67,15 @@ function applyReport(r,i){
  else u.status=u.isFireOrigin&&r.status!=='safe'?'danger':r.status;
  r.matchedIncidentId=r.incidentId=i.id;r.buildingId=i.buildingId;return true;
 }
+
+function newIncident(b){var bid=b.id,ho='',generated=S.generateUnits(b,null);var now=Date.now();var i={id:'inc-'+uid(),buildingId:bid,apt:b.apt,dong:b.dong,officialHo:ho||null,confirmedAt:now,closed:false,units:generated,afp:copy(b.core),unitFacilitiesSnapshot:copy(state.unitFacilities||{}),buildingSnapshot:copy(b),facilityVersion:b.facilityVersion,dispatchNote:'',casualties:{dead:0,severe:0,minor:0,guided:0,selfEvacuated:0},residentLinkExp:now+state.linkTtlHours*3600000,firefighterLinkExp:now+state.linkTtlHours*3600000};state.incidents[i.id]=i;return i;}
+
+function reportedUnit(i,ho){if(!unit(i,ho)){var u=S.generateUnits({units:[ho]},null)[ho];u.unregistered=true;i.units[ho]=u;}}
+function routedBuilding(x){var b=buildingFor(x);if(b)return store.getEffectiveBuilding(b.id);
+ var id='reported-'+encodeURIComponent(JSON.stringify([x.complexCode||S.normalizeAddr(x.apt),x.dong]));
+ b=state.importedBuildings[id]||{id:id,apt:x.apt,dong:x.dong,complexCode:x.complexCode,units:[],core:S.makeUnknownFacility(S.AFP_CORE_FIELDS),suppression:S.makeUnknownFacility(S.AFP_SUPPRESSION_FIELDS),search:S.makeUnknownSearch(),source:'resident-report',facilityVersion:null};
+ if(b.units.indexOf(x.ho)<0)b.units.push(x.ho);state.importedBuildings[id]=b;return b;
+}
 function reportAt(apt,dong,ho,id,bid){
  var x=norm({apt:apt,dong:dong,ho:ho,buildingId:bid}), i=target(x,id);if(id&&!i)return null;
  return Object.values(state.reports).find(function(r){return !r.archived&&(r.incidentId||null)===(i?i.id:null)&&(!bid||r.buildingId===bid)&&S.addrEquals(r.apt,r.dong,x.apt,x.dong)&&r.ho===x.ho;})||null;
@@ -95,17 +104,19 @@ var store={
  getAfpForAddress:function(apt,dong,ho,id,bid){var x=norm({apt:apt,dong:dong,ho:ho,buildingId:bid}),i=target(x,id);if(id&&!i)return {};if(i)return store.getEffectiveAfp(unit(i,ho),i.afp);var b=buildingFor(x);return b?store.getEffectiveBuilding(b.id).core:{};},
  getEffectiveAfp:function(u,a){return Object.assign({},a,u&&u.afpOverride||{});},
  submitReport:function(p){
-  var x=norm(p),i=target(x,p.incidentId);
+  var x=norm(p),i=target(x,p.incidentId),routing=p.routing==='first-auto',candidate=null,first=false;
   if(!x.apt||!x.dong||!x.ho)return fail('아파트·동·호수를 확인해주세요. 신고는 저장하지 않았습니다.');
   if(p.incidentId&&!i)return fail('신고 대상 사건이 유효하지 않습니다.');
+  if(routing&&!p.incidentId){var rb=routedBuilding(x);x.buildingId=rb.id;candidate=findOpen(rb.id);first=!candidate;i=first?newIncident(rb):null;if(i){i.autoOpened=true;reportedUnit(i,x.ho);log('시스템','최초 신고로 사건 자동 시작',i.id);}}
   if(i&&Date.now()>i.residentLinkExp)return fail('입주민 링크가 만료되었습니다.');
   if(i&&!unit(i,x.ho))return fail('등록된 세대가 아닙니다. 호수를 확인해주세요.');
-  var b=buildingFor(x),existing=x.complexCode&&!i?Object.values(state.reports).find(function(r){return !r.archived&&!r.incidentId&&r.complexCode===x.complexCode&&r.dong===x.dong&&r.ho===x.ho;}):reportAt(x.apt,x.dong,x.ho,i&&i.id,b&&b.id);
-  var key=existing?existing.key:reportKey(x.apt,x.dong,x.ho,i&&i.id,b&&b.id||x.complexCode),old=state.reports[key];
+  var b=(routing?store.getEffectiveBuilding(x.buildingId)||state.importedBuildings[x.buildingId]:buildingFor(x)),existing=x.complexCode&&!i?Object.values(state.reports).find(function(r){return !r.archived&&!r.incidentId&&r.complexCode===x.complexCode&&r.dong===x.dong&&r.ho===x.ho;}):reportAt(x.apt,x.dong,x.ho,i&&i.id,b&&b.id);
+  var key=routing?('report-'+uid()):existing?existing.key:reportKey(x.apt,x.dong,x.ho,i&&i.id,b&&b.id||x.complexCode),old=state.reports[key];
   var r=Object.assign({},x,{fieldObservation:old&&old.fieldObservation||null,version:uid(),readReceipt:null,key:key,buildingId:b&&b.id||null,incidentId:i&&i.id||null,matchedIncidentId:null,answers:copy(p.answers||{}),resultKey:p.resultKey,urgency:p.urgency,notes:p.notes||[],status:fromResult(p.resultKey),
    occupants:Number.isInteger(p.occupants)&&p.occupants>0?p.occupants:null,currentPlace:String(p.currentPlace||'').trim().slice(0,100),hasVulnerable:typeof p.hasVulnerable==='boolean'?p.hasVulnerable:null,
    ruleVersion:S.RULE_VERSION,facilityVersion:i?i.facilityVersion:(b?store.getEffectiveBuilding(b.id).facilityVersion:null),
    previous:old?(old.previous||[]).concat([{at:old.updatedAt,status:old.status,resultKey:old.resultKey}]):[],updatedAt:Date.now(),auto:false});
+  if(routing){r.routing='first-auto';r.linkDecision=first?'automatic':'pending';r.candidateIncidentId=candidate?candidate.id:null;}
   state.reports[key]=r;if(i)applyReport(r,i);log('입주민',x.ho+'호 상태 접수',i&&i.id);Object.assign(state.actionLog[0],{reportKey:key,buildingId:r.buildingId,ho:r.ho,apt:r.apt,dong:r.dong});return commit()?key:false;
  },
  acknowledgeReport:function(p){
@@ -161,7 +172,12 @@ var store={
   if(reportId){var r=state.reports[reportId];if(!r||r.archived||r.incidentId||!S.addrEquals(r.apt,r.dong,i.apt,i.dong)||(r.buildingId&&r.buildingId!==bid)||!applyReport(r,i)){state=copy(snapshot);return fail('선택한 신고와 사건의 대상이 일치하지 않습니다.');}}
   activeId=i.id;log('관리자',i.apt+' '+i.dong+'동 사건 확정·정정',i.id);return commit()?i.id:false;
  },
- closeActiveIncident:function(id){var i=writable(id);if(!i)return false;i.closed=true;i.closedAt=Date.now();Object.values(state.reports).forEach(function(r){if(r.incidentId===i.id)r.archived=true;});log('관리자','사건 종료·기록 보관',i.id);if(activeId===i.id)activeId=null;return commit();},
+ decideReportConnection:function(key,id,decision,actor){
+  var r=state.reports[key],i=incident(id),who=String(actor||'').trim();if(!who||!r||r.archived||r.incidentId||!i||i.closed||r.candidateIncidentId!==i.id||r.buildingId!==i.buildingId)return fail('신고 또는 진행 사건이 변경되었습니다. 다시 확인해주세요.');
+  if(!['link','hold'].includes(decision))return fail('연결 여부를 선택해주세요.');
+  if(decision==='link'){reportedUnit(i,r.ho);applyReport(r,i);}r.linkDecision=decision;r.linkDecidedBy=who;r.linkDecidedAt=Date.now();log(who,decision==='link'?'후속 신고 사건 연결':'후속 신고 별도 보관',i.id);state.actionLog[0].reportKey=key;return commit();
+ },
+ closeActiveIncident:function(id,actor){var i=writable(id);if(!i)return false;i.closed=true;i.closedAt=Date.now();Object.values(state.reports).forEach(function(r){if(r.incidentId===i.id)r.archived=true;});Object.values(state.reports).forEach(function(r){if(!r.incidentId&&r.candidateIncidentId===i.id){r.archived=true;r.closedWithIncidentId=i.id;}});log(actor||'관리자','사건 종료·기록 보관',i.id);if(activeId===i.id)activeId=null;return commit();},
  adjustCasualty:function(k,d,id){var i=writable(id);if(!i||!has(i.casualties,k)||!Number.isInteger(d))return false;i.casualties[k]=Math.max(0,i.casualties[k]+d);log('소방대원',k+' 집계 '+d,i.id);return commit();},
  getUnit:function(ho,id){return unit(selected(id),ho);},
  getUnits:function(id){var i=selected(id);return i?Object.values(i.units).sort(function(a,b){return (b.floor||0)-(a.floor||0)||String(a.ho).localeCompare(String(b.ho),'ko',{numeric:true});}):[];},

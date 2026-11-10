@@ -162,7 +162,7 @@ function result(){
   captureDetails();
   const count=document.getElementById('resident-count');if(!count.reportValidity())return;
   const details={...state.details,occupants:state.details.occupants===''?null:Number(state.details.occupants)};
-  const key=S.store.submitReport({...state.loc,...details,answers:{...state.answers},resultKey:state.result.key,urgency:state.result.urgency,notes:[...state.result.notes,'입주민 디자인 데모 · 세대별 시설자료 '+(f?.verifiedAt||'미확인')]});
+  const key=S.store.submitReport({...state.loc,...details,routing:'first-auto',answers:{...state.answers},resultKey:state.result.key,urgency:state.result.urgency,notes:[...state.result.notes,'입주민 디자인 데모 · 세대별 시설자료 '+(f?.verifiedAt||'미확인')]});
   if(key){state.lastSaved={reportKey:key,reportVersion:S.store.getReport(key).version||S.store.getReport(key).updatedAt,at:Date.now(),location:locationText(),...details,action:r.title};safeWrite('safehome_resident_design_last_saved',state.lastSaved);showSaved();const links=document.getElementById('report-links');if(links){links.innerHTML=['situation','field'].map((page,n)=>'<a class="button secondary" target="_blank" rel="noopener" href="'+page+'.html?report='+encodeURIComponent(key)+'">'+(n?'현장활동에서 확인':'상황실에서 확인')+'</a>').join('');}document.getElementById('save').textContent='저장 완료 · 다시 공유';}
   toast(key?'이 브라우저에 저장했습니다. 실제 119 신고는 접수되지 않습니다.':S.store.getError()||'저장에 실패했습니다.');
  };
