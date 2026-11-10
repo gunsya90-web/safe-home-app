@@ -1,0 +1,4 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
+const code=fs.readFileSync(path.join(__dirname,'../js/resident-design.js'),'utf8');
+const fn=code.slice(code.indexOf('function completeResult(){'),code.indexOf('function facilityQuestion(){'));
+test('최종 안내가 표시된 직후 자동 공유하며 미리보기는 저장하지 않음',()=>{for(const preview of [false,true]){const events=[],state={answers:{},preview,facilityQueue:[]};const context={state,S:{decide:()=>({key:'F',notes:[]})},C:{confirmedFacilityCore:()=>({})},move(){assert.equal(state.phase,2);events.push('guide');},document:{getElementById:()=>({onclick:()=>events.push('share')})}};vm.runInNewContext(fn+'completeResult();',context);assert.deepEqual(events,preview?['guide']:['guide','share']);}});
