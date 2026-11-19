@@ -11,7 +11,7 @@ test('상황실: 출처·시각·후속통화·긴급경과·작성중 입력·�
  try{
  browser=await chromium.launch({headless:true});const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:'+server.address().port+'/situation.html');
- await page.locator('#desk-actor').fill('상황실검증');await page.locator('#sample').click();
+ assert.equal(await page.locator('#desk-actor').count(),0);await page.locator('#sample').click();
  await page.evaluate(()=>{const s=SAFEHOME.store,i=s.listIncidents().find(i=>!i.closed);s.sendMessage({incidentId:i.id,actor:'담당',recipient:'현장 전체',body:'긴급 확인',urgent:true});s.recordCall({incidentId:i.id,ho:'2503',actor:'담당',outcome:'noanswer',note:'부재 확인'});});
  assert.match(await page.locator('#desk-alerts').innerText(),/긴급 미확인 1건/);assert.match(await page.locator('#desk-alerts').innerText(),/부재·재연락 1건/);
  await page.locator('#show-tasks').click();assert.match(await page.locator('#desk-tasks').innerText(),/부재/);

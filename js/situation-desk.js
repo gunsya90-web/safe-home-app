@@ -3,9 +3,10 @@ const S=window.SAFEHOME,$=id=>document.getElementById(id),esc=S.escapeHtml;
 const labels={danger:'구조 필요',rescuing:'구조 중',waiting:'세대 대기',safe:'안전',unresponded:'미응답'},msgLabels={sent:'현장 미확인',acknowledged:'확인함',inprogress:'조치 중',done:'완료'},callLabels={connected:'연결',noanswer:'부재',callback:'재연락 필요'};
 Object.defineProperties(labels,{blank:{value:''},moving:{value:'이전 이동 기록'}});
 let queue='active',incidentId=null,reportKey=null,ho='',history='activity',callTarget='',callIncidentId=null,toastTimer;
-try{$('desk-actor').value=sessionStorage.getItem('safehome_desk_actor')||'';}catch{}
-$('desk-actor').oninput=()=>{try{sessionStorage.setItem('safehome_desk_actor',$('desk-actor').value);}catch{}};
-function actor(){const a=$('desk-actor').value.trim();if(!a){toast('상단에 상황실 담당자 이름을 입력해주세요.');$('desk-actor').focus();}return a;}
+let sessionActor;
+try{sessionActor=sessionStorage.getItem('safehome_desk_session_id');if(!sessionActor){sessionActor='상황실 세션 · '+crypto.randomUUID().slice(0,8);sessionStorage.setItem('safehome_desk_session_id',sessionActor);}}catch{sessionActor='상황실 세션 · '+crypto.randomUUID().slice(0,8);}
+function actor(){return sessionActor;}
+
 function answerLabel(v){return ({많음또는화염:'연기 많음 · 화염 보임',조금있음:'연기 조금 있음',없음:'연기 없음',우리집:'우리 집',아래층:'아래층',위층:'위층',같은층:'같은 층',모름:'모름',문밖화염있음:'문밖에 화염 있음',문밖연기있음:'문밖에 연기 있음',가능하다:'통과 가능'})[v]||v||'미응답';}
 function elapsed(t){const n=Number(t);if(!n||!Number.isFinite(n))return '시각 미확인';const seconds=Math.max(0,Math.floor((Date.now()-n)/1000));return seconds<60?seconds+'초 경과':seconds<3600?Math.floor(seconds/60)+'분 경과':seconds<86400?Math.floor(seconds/3600)+'시간 '+Math.floor(seconds%3600/60)+'분 경과':Math.floor(seconds/86400)+'일 '+Math.floor(seconds%86400/3600)+'시간 경과';}
 function age(t){return '<span data-elapsed="'+esc(String(t||''))+'">'+elapsed(t)+'</span>';}
